@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sai Laptop RMS</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif;
+    background:#0a0b10;color:#e8eaf6;
+    display:flex;align-items:center;justify-content:center;
+    height:100vh;overflow:hidden;
+    -webkit-app-region:drag;
+    user-select:none;
+  }
+  .splash{display:flex;flex-direction:column;align-items:center;gap:20px;width:360px}
+  .logo-wrap{
+    width:80px;height:80px;border-radius:20px;
+    background:linear-gradient(90deg,#1310a4 0%,#5e0792 18%,#cd0063 51%,#f20f07 80%,#ff4000 100%);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 32px rgba(205,0,99,.45);
+    animation:logoPulse 2s ease-in-out infinite;
+  }
+  @keyframes logoPulse{0%,100%{box-shadow:0 6px 32px rgba(205,0,99,.45)}50%{box-shadow:0 6px 48px rgba(205,0,99,.65)}}
+  .logo-wrap img{width:52px;height:52px;object-fit:contain}
+  .title{font-size:20px;font-weight:700;letter-spacing:-.5px;text-align:center}
+  .subtitle{font-size:11px;color:#545b6e;text-transform:uppercase;letter-spacing:.1em;margin-top:-12px}
+  .checks{width:100%;display:flex;flex-direction:column;gap:6px}
+  .check-row{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 12px;border-radius:8px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.06);
+    font-size:12px;color:#8b92a8;
+    transition:all .3s;
+  }
+  .check-row.ok{border-color:rgba(16,185,129,.3);color:#10b981}
+  .check-row.fail{border-color:rgba(239,68,68,.3);color:#ef4444}
+  .check-row.running{border-color:rgba(205,0,99,.3);color:#e8eaf6}
+  .check-icon{
+    width:20px;height:20px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;font-size:12px;font-weight:700;
+  }
+  .check-row.running .check-icon{background:rgba(205,0,99,.2);color:#cd0063}
+  .check-row.ok .check-icon{background:rgba(16,185,129,.2);color:#10b981}
+  .check-row.fail .check-icon{background:rgba(239,68,68,.2);color:#ef4444}
+  .spinner{
+    width:14px;height:14px;border:2px solid rgba(205,0,99,.3);
+    border-top-color:#cd0063;border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .check-label{flex:1}
+  .check-status{font-size:10px;font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+  .progress-wrap{width:100%;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:4px}
+  .progress-bar{height:100%;background:linear-gradient(90deg,#1310a4,#5e0792,#cd0063);border-radius:2px;transition:width .4s ease;width:0}
+  .bottom-msg{
+    font-size:10px;color:#545b6e;text-align:center;
+    min-height:16px;margin-top:4px;
+    transition:all .3s;
+  }
+  .bottom-msg.error{color:#ef4444}
+  .bottom-msg.ready{color:#10b981}
+  .retry-btn{
+    margin-top:8px;padding:6px 20px;border-radius:6px;
+    background:linear-gradient(90deg,#1310a4,#cd0063);color:#fff;
+    border:none;font-size:11px;font-weight:600;cursor:pointer;
+    -webkit-app-region:no-drag;display:none;
+  }
+  .retry-btn:hover{opacity:.88}
+  .version{font-size:9px;color:#545b6e;position:fixed;bottom:12px}
+</style>
+</head>
+<body>
+<div class="splash">
+  <div class="logo-wrap"><img src="logo.png" alt="Sai Laptop"></div>
+  <div class="title">Sai Laptop RMS</div>
+  <div class="subtitle">System Startup</div>
+
+  <div class="checks">
+    <div class="check-row" id="check-internet">
+      <div class="check-icon"><div class="spinner"></div></div>
+      <span class="check-label">Internet Connection</span>
+      <span class="check-status" id="status-internet">Checking...</span>
+    </div>
+    <div class="check-row" id="check-api">
+      <div class="check-icon"><div class="spinner"></div></div>
+      <span class="check-label">API Server</span>
+      <span class="check-status" id="status-api">Waiting...</span>
+    </div>
+    <div class="check-row" id="check-db">
+      <div class="check-icon"><div class="spinner"></div></div>
+      <span class="check-label">Database</span>
+      <span class="check-status" id="status-db">Waiting...</span>
+    </div>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+  <div class="bottom-msg" id="bottom-msg">Initializing system...</div>
+  <button class="retry-btn" id="retry-btn" onclick="startChecks()">Retry</button>
+  <div class="version">v1.0.0</div>
+</div>
+
+<script>
+function setCheck(id, state, text) {
+  const row = document.getElementById('check-' + id);
+  const icon = row.querySelector('.check-icon');
+  const status = document.getElementById('status-' + id);
+  row.className = 'check-row ' + state;
+  if (state === 'running') {
+    icon.innerHTML = '<div class="spinner"></div>';
+  } else if (state === 'ok') {
+    icon.innerHTML = '&#10003;';
+  } else {
+    icon.innerHTML = '&#10007;';
+  }
+  if (text) status.textContent = text;
+}
+
+function setProgress(pct) {
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+function setBottom(msg, cls) {
+  const el = document.getElementById('bottom-msg');
+  el.textContent = msg;
+  el.className = 'bottom-msg' + (cls ? ' ' + cls : '');
+}
+
+function showRetry(show) {
+  document.getElementById('retry-btn').style.display = show ? 'inline-block' : 'none';
+}
+
+async function startChecks() {
+  showRetry(false);
+
+  // Reset all
+  ['internet', 'api', 'db'].forEach(id => {
+    setCheck(id, 'running', 'Checking...');
+  });
+  setProgress(0);
+  setBottom('Initializing system...');
+
+  // --- Step 1: Internet ---
+  setProgress(10);
+  setCheck('internet', 'running', 'Checking...');
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch('https://rms-api-psi.vercel.app/api/health', {
+      signal: ctrl.signal,
+      cache: 'no-store'
+    });
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setCheck('internet', 'ok', 'Connected');
+    setProgress(40);
+
+    // --- Step 2: API ---
+    setCheck('api', 'running', 'Checking...');
+    setBottom('Connecting to server...');
+    const data = await resp.json();
+    setCheck('api', 'ok', 'Online');
+    setProgress(70);
+
+    // --- Step 3: DB ---
+    setCheck('db', 'running', 'Checking...');
+    setBottom('Verifying database...');
+    if (data.db) {
+      setCheck('db', 'ok', 'Connected');
+      setProgress(100);
+      setBottom('All systems ready', 'ready');
+      // Launch app
+      await window.api.launchApp();
+    } else {
+      setCheck('db', 'fail', 'Offline');
+      setProgress(100);
+      setBottom('Database unreachable — launching offline mode', 'error');
+      await window.api.launchApp();
+    }
+  } catch (err) {
+    // Internet/API failed
+    const isNetErr = err.name === 'AbortError' || err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+    if (isNetErr) {
+      setCheck('internet', 'fail', 'No connection');
+      setCheck('api', 'fail', 'Unreachable');
+      setCheck('db', 'fail', 'Unreachable');
+    } else {
+      setCheck('internet', 'ok', 'Connected');
+      setCheck('api', 'fail', 'Error');
+      setCheck('db', 'fail', 'Unreachable');
+    }
+    setProgress(100);
+    setBottom('Server unreachable — launching offline mode', 'error');
+    showRetry(true);
+    // Auto launch after 3s in offline mode
+    setTimeout(() => window.api.launchApp(), 2500);
+  }
+}
+
+// Start on load
+window.addEventListener('DOMContentLoaded', () => { startChecks(); });
+</script>
+</body>
+</html>
