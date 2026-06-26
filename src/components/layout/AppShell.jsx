@@ -30,6 +30,7 @@ export default function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
   const [dbStatus, setDbStatus] = useState(true);
+  const [serverStatus, setServerStatus] = useState(true);
   const [searchVal, setSearchVal] = useState('');
   const branchRef = useRef(null);
 
@@ -42,12 +43,19 @@ export default function AppShell() {
   }, []);
 
   useEffect(() => {
+    if (window.electronAPI?.isElectron) {
+      window.api.getHealth().then((h) => { setDbStatus(h.db); setServerStatus(h.server); });
+      window.api.onHealthUpdate((h) => { setDbStatus(h.db); setServerStatus(h.server); });
+      return;
+    }
     async function check() {
       try {
         const { data } = await api.get('/health');
         setDbStatus(data.db);
+        setServerStatus(true);
       } catch {
         setDbStatus(false);
+        setServerStatus(false);
       }
     }
     check();
@@ -129,8 +137,8 @@ export default function AppShell() {
               <span className={`status-dot${dbStatus ? ' online' : ''}`} title={dbStatus ? 'DB Connected' : 'DB Disconnected'}>
                 <span className="material-symbols-rounded" style={{ fontSize: 14 }}>cloud</span>
               </span>
-              <span className={`status-dot${isOnline ? ' online' : ''}`} title={isOnline ? 'Online' : 'Offline'}>
-                <span className="material-symbols-rounded" style={{ fontSize: 14 }}>{isOnline ? 'wifi' : 'wifi_off'}</span>
+              <span className={`status-dot${(window.electronAPI?.isElectron ? serverStatus : isOnline) ? ' online' : ''}`} title={(window.electronAPI?.isElectron ? serverStatus : isOnline) ? 'Server Online' : 'Server Offline'}>
+                <span className="material-symbols-rounded" style={{ fontSize: 14 }}>{(window.electronAPI?.isElectron ? serverStatus : isOnline) ? 'wifi' : 'wifi_off'}</span>
               </span>
               <button
                 className={`hbtn${permission === 'granted' ? ' notif-on' : ''}`}
