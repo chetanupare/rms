@@ -36,7 +36,12 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public')));
 
-const client = new MongoClient(process.env.MONGO_URI || 'mongodb://localhost:27017/slcg_rms');
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  logger.error('MONGO_URI environment variable is required');
+  process.exit(1);
+}
+const client = new MongoClient(MONGO_URI);
 
 async function checkNet() {
   return new Promise((resolve) => {
