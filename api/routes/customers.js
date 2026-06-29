@@ -36,18 +36,18 @@ router.get('/by-mobile/:mobile', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { branch } = req.query;
-    const branchFilter = branch ? { branch: branch.toUpperCase() } : {};
+    const branchFilter = branch ? { branch: { $regex: `^${branch}$`, $options: 'i' } } : {};
     const customers = await req.db.collection('customers')
       .find()
       .sort({ createdAt: -1 })
       .toArray();
     if (branchFilter.branch) {
-      const jobCustomerIds = await req.db.collection('job_cards')
+      const jobPhones = await req.db.collection('job_cards')
         .find(branchFilter)
-        .project({ customerId: 1 })
+        .project({ customerPhone: 1 })
         .toArray();
-      const ids = new Set(jobCustomerIds.map((j) => j.customerId));
-      const filtered = customers.filter((c) => ids.has(c._id.toString()));
+      const phones = new Set(jobPhones.map((j) => j.customerPhone).filter(Boolean));
+      const filtered = customers.filter((c) => phones.has(c.mobile));
       return res.json(filtered);
     }
     res.json(customers);
@@ -62,7 +62,7 @@ router.get('/:id/history', async (req, res) => {
     if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
     const jobCards = await req.db.collection('job_cards')
-      .find({ customerId: customer._id.toString() })
+      .find({ customerPhone: customer.mobile })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -111,13 +111,16 @@ router.post('/', async (req, res) => {
       { $inc: { seq: 1 } },
       { upsert: true, returnDocument: 'after' }
     );
-    const jobId = `RM-${dateStr}-${String(jobSeq.seq).padStart(6, '0')}`;
+    const seqVal = jobSeq?.value?.seq || 1;
+    const jobId = `RM-${dateStr}-${String(seqVal).padStart(6, '0')}`;
     const trackingCode = nanoid(8);
 
     const jobResult = await req.db.collection('job_cards').insertOne({
       jobId,
       trackingCode,
       customerId: result.insertedId.toString(),
+      customerName: doc.name || '',
+      customerPhone: doc.mobile || '',
       branch: (req.user.branch || 'WANI').toUpperCase(),
       status: 'Pending',
       device: device || 'Laptop',
@@ -125,6 +128,7 @@ router.post('/', async (req, res) => {
       model: model || '',
       problem: problem || '',
       leadSource: 'In Store Visit',
+      pendingAssignmentSince: now,
       createdAt: now,
     });
 
@@ -157,11 +161,11 @@ router.post('/merge', adminOnly, async (req, res) => {
     const target = await req.db.collection('customers').findOne({ _id: new ObjectId(targetId) });
     if (!source || !target) return res.status(404).json({ message: 'Customer not found' });
 
-    const jobCards = await req.db.collection('job_cards').find({ customerId: source._id.toString() }).toArray();
+    const jobCards = await req.db.collection('job_cards').find({ customerPhone: source.mobile }).toArray();
     const jobIds = jobCards.map((j) => j.jobId);
 
     // Move job cards, repairs, billing to target
-    await req.db.collection('job_cards').updateMany({ customerId: source._id.toString() }, { $set: { customerId: target._id.toString() } });
+    await req.db.collection('job_cards').updateMany({ customerPhone: source.mobile }, { $set: { customerPhone: target.mobile, customerName: target.name } });
     if (jobIds.length > 0) {
       await req.db.collection('activity_logs').updateMany({ jobId: { $in: jobIds } }, { $set: { mergedFrom: source._id.toString() } });
     }
@@ -176,13 +180,13 @@ router.delete('/:id', async (req, res) => {
     const customer = await req.db.collection('customers').findOne({ _id: toId(req.params.id) });
     if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
-    const jobCards = await req.db.collection('job_cards').find({ customerId: customer._id.toString() }).toArray();
+    const jobCards = await req.db.collection('job_cards').find({ customerPhone: customer.mobile }).toArray();
     const jobIds = jobCards.map((j) => j.jobId);
 
     if (jobIds.length > 0) {
       await req.db.collection('billing').deleteMany({ jobId: { $in: jobIds } });
       await req.db.collection('repairs').deleteMany({ jobId: { $in: jobIds } });
-      await req.db.collection('job_cards').deleteMany({ customerId: customer._id.toString() });
+      await req.db.collection('job_cards').deleteMany({ customerPhone: customer.mobile });
     }
     await req.db.collection('customers').deleteOne({ _id: toId(req.params.id) });
     res.json({ message: 'Customer and related records deleted' });

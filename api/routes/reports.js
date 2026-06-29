@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
   try {
     const db = req.db;
     const { type, format, branch } = req.query;
-    const branchFilter = branch ? { branch: branch.toUpperCase() } : {};
+    const branchFilter = branch ? { branch: { $regex: `^${branch}$`, $options: 'i' } } : {};
     let dateFilter = {};
 
     if (type === 'daily') {
@@ -31,12 +31,12 @@ router.get('/', async (req, res) => {
       jobs = await db.collection('job_cards').find({ ...branchFilter, ...dateFilter }).sort({ createdAt: -1 }).toArray();
     }
 
-    const customerIds = jobs.map((j) => j.customerId).filter(Boolean);
-    const customers = await db.collection('customers')
-      .find({ _id: { $in: customerIds.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) } })
-      .toArray();
+    const phoneNumbers = jobs.map((j) => j.customerPhone).filter(Boolean);
+    const customers = phoneNumbers.length > 0
+      ? await db.collection('customers').find({ mobile: { $in: phoneNumbers } }).toArray()
+      : [];
     const customerMap = {};
-    customers.forEach((c) => { customerMap[c._id.toString()] = c; });
+    customers.forEach((c) => { customerMap[c.mobile] = c; });
 
     const jobIds = jobs.map((j) => j.jobId).filter(Boolean);
     const bills = await db.collection('billing').find({ jobId: { $in: jobIds } }).toArray();
@@ -50,17 +50,16 @@ router.get('/', async (req, res) => {
 
     const enrichedJobs = jobs.map((j) => ({
       ...j,
-      customer: customerMap[j.customerId] || null,
+      customer: customerMap[j.customerPhone] || null,
       amount: billMap[j.jobId]?.amount || null,
     }));
 
     if (format === 'csv') {
       const header = 'Job ID,Customer Name,Mobile,Device,Brand,Model,Problem,Status,Branch,Amount,Date';
       const rows = enrichedJobs.map((j) => {
-        const c = j.customer || {};
         return [
-          j.jobId, c.name, c.mobile, c.device, c.brand, c.model,
-          `"${(c.problem || '').replace(/"/g, '""')}"`,
+          j.jobId, j.customerName || '', j.customerPhone || '', j.device || '', j.brand || '', j.model || '',
+          `"${(j.problem || '').replace(/"/g, '""')}"`,
           j.status, j.branch, j.amount || '', j.createdAt ? new Date(j.createdAt).toISOString().slice(0, 10) : '',
         ].join(',');
       });

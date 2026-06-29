@@ -11,22 +11,22 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const { branch } = req.query;
-    const branchFilter = branch ? { branch: branch.toUpperCase() } : {};
+    const branchFilter = branch ? { branch: { $regex: `^${branch}$`, $options: 'i' } } : {};
     const jobs = await req.db.collection('job_cards')
       .find(branchFilter)
       .sort({ createdAt: -1 })
       .toArray();
 
-    const customerIds = jobs.map((j) => j.customerId).filter(Boolean);
-    const customers = await req.db.collection('customers')
-      .find({ _id: { $in: customerIds.map((id) => toId(id)).filter(Boolean) } })
-      .toArray();
+    const phoneNumbers = jobs.map((j) => j.customerPhone).filter(Boolean);
+    const customers = phoneNumbers.length > 0
+      ? await req.db.collection('customers').find({ mobile: { $in: phoneNumbers } }).toArray()
+      : [];
     const customerMap = {};
-    customers.forEach((c) => { customerMap[c._id.toString()] = c; });
+    customers.forEach((c) => { customerMap[c.mobile] = c; });
 
     const result = jobs.map((job) => ({
       ...job,
-      customer: customerMap[job.customerId] || null,
+      customer: customerMap[job.customerPhone] || (job.customerName ? { name: job.customerName, mobile: job.customerPhone } : null),
     }));
 
     res.json(result);
@@ -41,7 +41,7 @@ router.get('/:id', async (req, res) => {
     const job = await req.db.collection('job_cards').findOne({ _id: id });
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
-    const customer = job.customerId ? await req.db.collection('customers').findOne({ _id: toId(job.customerId) }) : null;
+    const customer = job.customerPhone ? await req.db.collection('customers').findOne({ mobile: job.customerPhone }) : null;
     const repair = await req.db.collection('repairs').findOne({ jobId: job.jobId });
     const bill = await req.db.collection('billing').findOne({ jobId: job.jobId });
     const activity = await req.db.collection('activity_logs').find({ jobId: job.jobId }).sort({ createdAt: -1 }).limit(20).toArray();
@@ -54,25 +54,38 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { _id: clientId, customerId, device, brand, model, problem, branch, leadSource, accessories, condition, tags } = req.body;
-    if (!customerId || !device) {
-      return res.status(400).json({ message: 'customerId and device are required' });
+    const { _id: clientId, customerId, customerPhone: bodyPhone, device, brand, model, problem, branch, leadSource, accessories, condition, tags } = req.body;
+    if (!device) {
+      return res.status(400).json({ message: 'device is required' });
     }
     const now = new Date();
+
+    let customerName = '';
+    let customerPhone = bodyPhone || '';
+    if (customerPhone) {
+      const cust = await req.db.collection('customers').findOne({ mobile: customerPhone }, { projection: { name: 1 } });
+      if (cust) customerName = cust.name || '';
+    } else if (customerId) {
+      const cust = await req.db.collection('customers').findOne({ _id: toId(customerId) }, { projection: { name: 1, mobile: 1 } });
+      if (cust) { customerName = cust.name || ''; customerPhone = cust.mobile || ''; }
+    }
+
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
     const seq = await req.db.collection('sequences').findOneAndUpdate(
       { _id: 'jobId' },
       { $inc: { seq: 1 } },
       { upsert: true, returnDocument: 'after' }
     );
-    const jobId = `RM-${dateStr}-${String(seq.seq).padStart(6, '0')}`;
+    const seqVal = seq?.value?.seq || 1;
+    const jobId = `RM-${dateStr}-${String(seqVal).padStart(6, '0')}`;
     const trackingCode = nanoid(8);
 
     const doc = {
       ...(clientId ? { _id: clientId } : {}),
       jobId,
       trackingCode,
-      customerId,
+      customerId: customerId || null,
+      customerName, customerPhone,
       branch: (branch || 'WANI').toUpperCase(),
       status: 'Pending',
       device: device || 'Laptop',
@@ -84,6 +97,7 @@ router.post('/', async (req, res) => {
       condition: Array.isArray(condition) ? condition : [],
       tags: Array.isArray(tags) ? tags : [],
       photos: [],
+      pendingAssignmentSince: now,
       createdAt: now,
     };
     const result = await req.db.collection('job_cards').insertOne(doc);

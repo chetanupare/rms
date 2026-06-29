@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   try {
     const db = req.db;
     const { branch } = req.query;
-    const branchFilter = branch ? { branch: branch.toUpperCase() } : {};
+    const branchFilter = branch ? { branch: { $regex: `^${branch}$`, $options: 'i' } } : {};
 
     const totalJobs = await db.collection('job_cards').countDocuments(branchFilter);
     const pendingJobs = await db.collection('job_cards').countDocuments({ ...branchFilter, status: 'Pending' });
@@ -27,12 +27,12 @@ router.get('/', async (req, res) => {
       .limit(5)
       .toArray();
 
-    const customerIds = recentJobs.map((j) => j.customerId).filter(Boolean);
-    const customers = await db.collection('customers')
-      .find({ _id: { $in: customerIds.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) } })
-      .toArray();
+    const phoneNumbers = recentJobs.map((j) => j.customerPhone).filter(Boolean);
+    const customers = phoneNumbers.length > 0
+      ? await db.collection('customers').find({ mobile: { $in: phoneNumbers } }).toArray()
+      : [];
     const customerMap = {};
-    customers.forEach((c) => { customerMap[c._id.toString()] = c; });
+    customers.forEach((c) => { customerMap[c.mobile] = c; });
 
     const chartData = [];
     for (let i = 6; i >= 0; i--) {
@@ -57,7 +57,7 @@ router.get('/', async (req, res) => {
       completedJobs,
       todayRevenue,
       chartData,
-      recentJobs: recentJobs.map((j) => ({ ...j, customer: customerMap[j.customerId] || null })),
+      recentJobs: recentJobs.map((j) => ({ ...j, customer: customerMap[j.customerPhone] || null })),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

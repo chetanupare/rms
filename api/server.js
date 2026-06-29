@@ -23,6 +23,7 @@ import { authenticate } from './middleware/auth.js';
 import registerRoutes from './routes/register.js';
 import inventoryRoutes from './routes/inventory.js';
 import warrantyRoutes from './routes/warranty.js';
+import receptionRoutes from './routes/reception.js';
 import { seedAdmin, seedDeviceData, seedIndexes, seedInventory } from './seed.js';
 import { logger } from './logger.js';
 
@@ -127,6 +128,7 @@ async function start() {
     app.use('/api/register', registerRoutes);
     app.use('/api/inventory', inventoryRoutes);
     app.use('/api/warranty', warrantyRoutes);
+    app.use('/api/reception', receptionRoutes);
     app.use('/track', trackRoutes);
 
     app.use((err, req, res, next) => {

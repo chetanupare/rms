@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { ObjectId } from 'mongodb';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -11,7 +10,7 @@ router.get('/', async (req, res) => {
     if (!q) return res.json({ customers: [], jobs: [] });
 
     const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    const branchFilter = branch ? { branch: branch.toUpperCase() } : {};
+    const branchFilter = branch ? { branch: { $regex: `^${branch}$`, $options: 'i' } } : {};
 
     const allCustomers = await req.db.collection('customers')
       .find({ $or: [{ name: regex }, { mobile: regex }] })
@@ -23,23 +22,21 @@ router.get('/', async (req, res) => {
       .limit(10)
       .toArray();
 
-    const jobCustIds = new Set(jobs.map((j) => j.customerId).filter(Boolean));
-    const customers = allCustomers.filter((c) => !branch || jobCustIds.has(c._id.toString()));
+    const jobPhones = new Set(jobs.map((j) => j.customerPhone).filter(Boolean));
+    const customers = allCustomers.filter((c) => !branch || jobPhones.has(c.mobile));
 
-    const customerIds = customers.map((c) => c._id.toString());
-    const jobCustomerIds = jobs.map((j) => j.customerId).filter(Boolean);
-    const allIds = [...new Set([...customerIds, ...jobCustomerIds])];
+    const allPhones = [...new Set([...customers.map((c) => c.mobile), ...jobPhones])].filter(Boolean);
     const custMap = {};
-    if (allIds.length) {
+    if (allPhones.length) {
       const custs = await req.db.collection('customers')
-        .find({ _id: { $in: allIds.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) } })
+        .find({ mobile: { $in: allPhones } })
         .toArray();
-      custs.forEach((c) => { custMap[c._id.toString()] = c; });
+      custs.forEach((c) => { custMap[c.mobile] = c; });
     }
 
     res.json({
       customers: customers.map((c) => ({ ...c, _type: 'customer' })),
-      jobs: jobs.map((j) => ({ ...j, customer: custMap[j.customerId] || null, _type: 'job' })),
+      jobs: jobs.map((j) => ({ ...j, customer: custMap[j.customerPhone] || null, _type: 'job' })),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

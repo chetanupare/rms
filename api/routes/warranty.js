@@ -18,7 +18,7 @@ router.get('/check', async (req, res) => {
     const customer = await req.db.collection('customers').findOne({ mobile });
     if (!customer) return res.json({ active: false, message: 'Customer not found' });
 
-    const jobCards = await req.db.collection('job_cards').find({ customerId: customer._id.toString() }).toArray();
+    const jobCards = await req.db.collection('job_cards').find({ customerPhone: mobile }).toArray();
     const jobIds = jobCards.map((j) => j.jobId);
     const now = new Date();
 
@@ -44,8 +44,8 @@ router.get('/check', async (req, res) => {
 
 router.post('/rma', async (req, res) => {
   try {
-    const { jobId, customerId, device, brand, model, problem, warrantyBillId } = req.body;
-    if (!jobId || !customerId) return res.status(400).json({ message: 'jobId and customerId required' });
+    const { jobId, customerId, customerPhone, device, brand, model, problem, warrantyBillId } = req.body;
+    if (!jobId) return res.status(400).json({ message: 'jobId required' });
 
     const bill = warrantyBillId ? await req.db.collection('billing').findOne({ _id: new ObjectId(warrantyBillId) }) : null;
     const warrantyEnd = bill?.warrantyEnd ? new Date(bill.warrantyEnd) : null;
@@ -57,7 +57,7 @@ router.post('/rma', async (req, res) => {
     const doc = {
       rmaId: `RMA-${Date.now().toString(36).toUpperCase()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
       originalJobId: jobId,
-      customerId, warrantyBillId: warrantyBillId || null,
+      customerId: customerId || null, customerPhone: customerPhone || null, warrantyBillId: warrantyBillId || null,
       device: device || job?.device || '', brand: brand || job?.brand || '',
       model: model || job?.model || '', problem: problem || '',
       status: 'Open', createdAt: now, updatedAt: now,
@@ -76,10 +76,18 @@ router.get('/rma', async (req, res) => {
     const filter = status ? { status } : {};
     const claims = await req.db.collection('rma_claims').find(filter).sort({ createdAt: -1 }).toArray();
     const customerIds = [...new Set(claims.map((c) => c.customerId).filter(Boolean))];
-    const customers = customerIds.length > 0 ? await req.db.collection('customers').find({ _id: { $in: customerIds.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) } }).toArray() : [];
+    const customerPhones = [...new Set(claims.map((c) => c.customerPhone).filter(Boolean))];
+    const allPhones = [...new Set([...customerPhones])];
     const custMap = {};
-    customers.forEach((c) => { custMap[c._id.toString()] = c; });
-    res.json(claims.map((c) => ({ ...c, customer: custMap[c.customerId] || null })));
+    if (customerIds.length) {
+      const custs = await req.db.collection('customers').find({ _id: { $in: customerIds.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) } }).toArray();
+      custs.forEach((c) => { custMap[c._id.toString()] = c; });
+    }
+    if (allPhones.length) {
+      const custs = await req.db.collection('customers').find({ mobile: { $in: allPhones } }).toArray();
+      custs.forEach((c) => { custMap[c.mobile] = c; });
+    }
+    res.json(claims.map((c) => ({ ...c, customer: custMap[c.customerId] || custMap[c.customerPhone] || null })));
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

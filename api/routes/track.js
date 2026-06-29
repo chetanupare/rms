@@ -12,7 +12,7 @@ const STEPS = ['Registered & Queued', 'In Diagnosis / Repair', 'Repair Completed
 async function getTrackData(db, jobId) {
   const job = await db.collection('job_cards').findOne({ jobId });
   if (!job) return null;
-  const customer = job.customerId ? await db.collection('customers').findOne({ _id: toId(job.customerId) }) : null;
+  const customer = job.customerPhone ? await db.collection('customers').findOne({ mobile: job.customerPhone }) : null;
   const repair = await db.collection('repairs').findOne({ jobId: job.jobId });
   const bill = await db.collection('billing').findOne({ jobId: job.jobId });
   const activities = await db.collection('activity_logs').find({ jobId: job.jobId }).sort({ createdAt: -1 }).limit(10).toArray();
@@ -90,7 +90,7 @@ body{font-family:'Inter',sans-serif;background:#f5f7fa;color:#1a1a2e;min-height:
       </div>
       <div class="device-info">
         <strong>${job.device || 'Device'}${job.model ? ' — ' + job.model : ''}</strong>
-        <span>${customer?.name || ''} · ${customer?.mobile || ''}</span>
+        <span>${customer?.name || job.customerName || ''} · ${customer?.mobile || job.customerPhone || ''}</span>
         ${job.problem ? `<br><span style="font-size:11px;color:#94a3b8;margin-top:4px;display:block">Issue: ${job.problem}</span>` : ''}
       </div>
       <div class="stepper">${steps.map((label, i) => {
