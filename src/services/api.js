@@ -95,4 +95,9 @@ export const endpoints = {
   rmaList: (params) => api.get('/warranty/rma', { params }),
   updateRMA: (id, payload) => api.put(`/warranty/rma/${id}`, payload),
   supplierReturnable: () => api.get('/warranty/supplier-returnable'),
+
+  // Reception / Assignment
+  receptionTechnicians: () => api.get('/reception/technicians'),
+  receptionUnassigned: () => api.get('/reception/unassigned'),
+  assignJob: (jobId, technicianId) => api.post(`/reception/jobs/${jobId}/assign`, { technicianId }),
 };

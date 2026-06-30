@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatDate, formatDateTime, formatCurrency, statusBadgeClass, openWhatsApp } from '../utils/helpers';
 import { printA4Receipt, printThermalLabel } from '../utils/printService';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Modal from '../components/Modal';
 import JsBarcode from 'jsbarcode';
 
 const LEAD_ICONS = {
@@ -22,6 +23,10 @@ export default function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const [techModalOpen, setTechModalOpen] = useState(false);
+  const [technicians, setTechnicians] = useState([]);
+  const [loadingTechs, setLoadingTechs] = useState(false);
+  const [assigning, setAssigning] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -81,6 +86,27 @@ export default function JobDetail() {
     } catch { addToast('Failed', 'error'); }
   }
 
+  async function openTechModal() {
+    setTechModalOpen(true);
+    setLoadingTechs(true);
+    try {
+      const { data: techs } = await endpoints.receptionTechnicians();
+      setTechnicians(techs);
+    } catch { addToast('Failed to load technicians', 'error'); }
+    finally { setLoadingTechs(false); }
+  }
+
+  async function handleAssign(techId, techName) {
+    setAssigning(techId);
+    try {
+      await endpoints.assignJob(data.jobId, techId);
+      addToast(`Assigned to ${techName}`, 'success');
+      setTechModalOpen(false);
+      const res = await endpoints.jobCardById(id); setData(res.data);
+    } catch { addToast('Assignment failed', 'error'); }
+    finally { setAssigning(null); }
+  }
+
   if (loading) return <LoadingSpinner text="Loading job details..." />;
   if (!data) return <div className="t-lg muted text-center" style={{ padding: 48 }}>Job not found</div>;
 
@@ -106,6 +132,7 @@ export default function JobDetail() {
           </div>
         </div>
         <div className="page-actions">
+          {job.status === 'Pending' && <button className="btn btn-primary" onClick={openTechModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>play_arrow</span> Start & Assign</button>}
           {job.status === 'In Progress' && <button className="btn btn-primary" onClick={handleComplete}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>check</span> Complete</button>}
           {job.status === 'Billed' && <button className="btn btn-primary" onClick={handleDeliver}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>handshake</span> Deliver</button>}
           {c.mobile && <button className="btn btn-ghost" onClick={() => openWhatsApp(c.mobile, `Hi ${c.name}, job ${job.jobId} (${job.device} ${job.model}) is: ${job.status}.`)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>chat</span> WhatsApp</button>}
@@ -234,6 +261,61 @@ export default function JobDetail() {
           </div>
         </div>
       </div>
+
+      <Modal open={techModalOpen} onClose={() => setTechModalOpen(false)} title="Assign Technician" wide>
+        {loadingTechs ? (
+          <div style={{ textAlign: 'center', padding: 24 }}><LoadingSpinner text="Loading technicians..." /></div>
+        ) : technicians.length === 0 ? (
+          <div className="dim" style={{ textAlign: 'center', padding: 24 }}>No technicians found</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {technicians
+              .sort((a, b) => {
+                if (a.status === 'on_duty' && b.status !== 'on_duty') return -1;
+                if (a.status !== 'on_duty' && b.status === 'on_duty') return 1;
+                return a.activeJobs - b.activeJobs;
+              })
+              .map(tech => {
+                const isOnline = tech.status === 'on_duty';
+                const busy = tech.activeJobs >= 5;
+                return (
+                  <div key={tech._id} className="card" style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                    border: busy ? '1px solid var(--c-amber)' : '1px solid var(--c-border)',
+                    opacity: isOnline ? 1 : 0.6,
+                  }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                      background: isOnline ? 'var(--c-green)' : 'var(--c-text3)',
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="t-sm fw-600">{tech.name}</div>
+                      <div className="t-xs dim">{tech.phone || 'No phone'}</div>
+                    </div>
+                    <div style={{ textAlign: 'center', minWidth: 70 }}>
+                      <div className="t-xs dim">Active Jobs</div>
+                      <div className="t-lg fw-700" style={{ color: busy ? 'var(--c-amber)' : 'var(--c-text)' }}>
+                        {tech.activeJobs}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={assigning === tech._id || !isOnline}
+                      onClick={() => handleAssign(tech._id, tech.name)}
+                      style={{ minWidth: 72 }}
+                    >
+                      {assigning === tech._id ? (
+                        <span className="spinner" style={{ width: 14, height: 14 }} />
+                      ) : (
+                        'Assign'
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
