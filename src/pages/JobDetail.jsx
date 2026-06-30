@@ -15,6 +15,12 @@ const LEAD_ICONS = {
   'Telephone': 'phone_in_talk', 'WhatsApp / Social Media': 'chat', 'Reference / Walk-in': 'groups',
 };
 
+const SUB_STATUS_MAP = {
+  'Pending': ['waiting_for_device', 'en_route'],
+  'In Progress': ['diagnosis', 'working', 'waiting_parts', 'parts_ordered', 'pending_approval', 'qc_failed', 'ready_for_testing'],
+  'Completed': ['repaired', 'unrepairable'],
+};
+
 export default function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,6 +35,20 @@ export default function JobDetail() {
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [assigning, setAssigning] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState(null);
+
+  // New Modals State
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectFee, setRejectFee] = useState(300);
+  const [rejectMode, setRejectMode] = useState('Cash');
+
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositMode, setDepositMode] = useState('Cash');
+  const [depositNotes, setDepositNotes] = useState('');
+
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [selectedMainStatus, setSelectedMainStatus] = useState('');
+  const [selectedSubStatus, setSelectedSubStatus] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -49,7 +69,7 @@ export default function JobDetail() {
 
   async function handleComplete() {
     try {
-      await endpoints.updateJobCard(data._id, { status: 'Completed' });
+      await endpoints.updateJobCard(data._id, { status: 'Completed', subStatus: 'repaired' });
       await api.post('/activity', { jobId: data.jobId, action: 'Repair completed', user: user?.username });
       addToast('Marked as Completed', 'success');
       const res = await endpoints.jobCardById(id); setData(res.data);
@@ -64,6 +84,39 @@ export default function JobDetail() {
       addToast('Delivered', 'success');
       const res = await endpoints.jobCardById(id); setData(res.data);
     } catch { addToast('Failed', 'error'); }
+  }
+
+  async function handleRejectSubmit(e) {
+    e.preventDefault();
+    try {
+      await endpoints.updateJobCard(data._id, { status: 'Rejected', diagnosticFee: Number(rejectFee), paymentMode: rejectMode });
+      await api.post('/activity', { jobId: data.jobId, action: 'Estimate Rejected', details: `Diagnostic Fee: ₹${rejectFee}`, user: user?.username });
+      addToast('Estimate Rejected & Bill Generated', 'success');
+      setRejectModalOpen(false);
+      const res = await endpoints.jobCardById(id); setData(res.data);
+    } catch { addToast('Failed to reject estimate', 'error'); }
+  }
+
+  async function handleDepositSubmit(e) {
+    e.preventDefault();
+    try {
+      await endpoints.addDeposit({ jobId: data.jobId, amount: depositAmount, paymentMode: depositMode, notes: depositNotes });
+      addToast('Deposit added', 'success');
+      setDepositModalOpen(false);
+      setDepositAmount('');
+      const res = await endpoints.jobCardById(id); setData(res.data);
+    } catch { addToast('Failed to add deposit', 'error'); }
+  }
+
+  async function handleUpdateStatusSubmit(e) {
+    e.preventDefault();
+    try {
+      await endpoints.updateJobCard(data._id, { status: selectedMainStatus, subStatus: selectedSubStatus });
+      await api.post('/activity', { jobId: data.jobId, action: 'Status Updated', details: `Status: ${selectedSubStatus || selectedMainStatus}`, user: user?.username });
+      addToast('Status updated', 'success');
+      setStatusModalOpen(false);
+      const res = await endpoints.jobCardById(id); setData(res.data);
+    } catch { addToast('Failed to update status', 'error'); }
   }
 
   async function handlePhotoUpload(e) {
@@ -115,6 +168,17 @@ export default function JobDetail() {
     finally { setAssigning(null); }
   }
 
+  function openStatusModal() {
+    setSelectedMainStatus(data.status);
+    setSelectedSubStatus(data.subStatus || '');
+    setStatusModalOpen(true);
+  }
+
+  function formatStatusName(str) {
+    if (!str) return '';
+    return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
   if (loading) return <LoadingSpinner text="Loading job details..." />;
   if (!data) return <div className="t-lg muted text-center" style={{ padding: 48 }}>Job not found</div>;
 
@@ -122,6 +186,7 @@ export default function JobDetail() {
   const c = job.customer || {};
   const r = job.repair;
   const b = job.bill;
+  const displayStatus = job.subStatus ? formatStatusName(job.subStatus) : job.status;
 
   return (
     <div style={{ animation: 'pageIn .25s ease' }}>
@@ -132,7 +197,7 @@ export default function JobDetail() {
             <span className="t-2xl" style={{ fontSize: 18 }}>{job.jobId}</span>
           </div>
           <div className="muted flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
-            <span className={`badge ${statusBadgeClass(job.status)}`}>{job.status}</span>
+            <span className={`badge ${statusBadgeClass(job.status)}`}>{displayStatus}</span>
             <span className="dim">·</span><span className="t-xs dim">{job.branch}</span>
             <span className="dim">·</span><span className="t-xs dim">{formatDate(job.createdAt)}</span>
             {job.leadSource && <><span className="dim">·</span><span className="t-xs dim flex items-center gap-1"><span className="material-symbols-rounded" style={{ fontSize: 11 }}>{LEAD_ICONS[job.leadSource] || 'source'}</span>{job.leadSource}</span></>}
@@ -142,9 +207,11 @@ export default function JobDetail() {
         <div className="page-actions">
           {job.status === 'Pending' && !job.technicianId && <button className="btn btn-primary" onClick={openTechModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>play_arrow</span> Start & Assign</button>}
           {job.status === 'Pending' && job.technicianId && job.technician?.offerStatus === 'offered' && <span className="badge" style={{ background: 'rgba(245,158,11,.12)', color: 'var(--c-amber)', fontSize: 11 }}>Awaiting technician acceptance</span>}
+          {job.status === 'In Progress' && <button className="btn btn-ghost" style={{ color: 'var(--c-red)' }} onClick={() => setRejectModalOpen(true)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>cancel</span> Reject Estimate</button>}
           {job.status === 'In Progress' && <button className="btn btn-primary" onClick={handleComplete}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>check</span> Complete</button>}
           {job.status === 'Billed' && <button className="btn btn-primary" onClick={handleDeliver}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>handshake</span> Deliver</button>}
-          {c.mobile && <button className="btn btn-ghost" onClick={() => openWhatsApp(c.mobile, `Hi ${c.name}, job ${job.jobId} (${job.device} ${job.model}) is: ${job.status}.`)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>chat</span> WhatsApp</button>}
+          {job.status !== 'Delivered' && <button className="btn btn-ghost" onClick={openStatusModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>update</span> Update Status</button>}
+          {c.mobile && <button className="btn btn-ghost" onClick={() => openWhatsApp(c.mobile, `Hi ${c.name}, job ${job.jobId} (${job.device} ${job.model}) is: ${displayStatus}.`)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>chat</span> WhatsApp</button>}
           <button className="btn btn-ghost" onClick={() => printA4Receipt(job, c, r, b, window.location.origin)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>receipt</span> A4</button>
           <button className="btn btn-ghost" onClick={() => printThermalLabel(job, c, window.location.origin)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>label</span> Label</button>
         </div>
@@ -242,18 +309,42 @@ export default function JobDetail() {
         </div>
       )}
 
-      {b && (
-        <div className="card mt-3">
-          <div className="t-sm fw-700 mb-2" style={{ textTransform: 'uppercase', fontSize: 10, letterSpacing: '.07em', color: 'var(--c-text3)' }}>Billing</div>
-          <div className="grid-2" style={{ gap: 6 }}>
+      {/* Advanced Billing & Deposits Section */}
+      <div className="card mt-3">
+        <div className="flex justify-between items-center mb-2">
+          <div className="t-sm fw-700" style={{ textTransform: 'uppercase', fontSize: 10, letterSpacing: '.07em', color: 'var(--c-text3)' }}>Billing & Deposits</div>
+          {!b && job.status !== 'Delivered' && (
+            <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => setDepositModalOpen(true)}>+ Add Deposit</button>
+          )}
+        </div>
+        
+        {job.deposits?.length > 0 && (
+          <div className="mb-3">
+            <div className="t-xs dim mb-1">Advance Deposits</div>
+            {job.deposits.map((d, i) => (
+              <div key={i} className="flex justify-between items-center" style={{ padding: '4px 8px', background: 'var(--c-surface2)', borderRadius: 4, marginBottom: 4, fontSize: 12 }}>
+                <span className="fw-600 text-green">{formatCurrency(d.amount)}</span>
+                <span className="dim">{d.paymentMode} - {formatDate(d.date)}</span>
+                {d.notes && <span className="dim t-xs">({d.notes})</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {b ? (
+          <div className="grid-2" style={{ gap: 6, marginTop: 10 }}>
             <div><span className="dim t-xs">Invoice</span><div className="mono fw-600">{b.invoiceNo}</div></div>
-            <div><span className="dim t-xs">Amount</span><div className="t-sm fw-600">{formatCurrency(b.amount)}</div></div>
+            <div><span className="dim t-xs">Total Amount</span><div className="t-sm fw-600">{formatCurrency(b.amount)}</div></div>
+            <div><span className="dim t-xs">Deposits</span><div className="t-sm" style={{ color: 'var(--c-green)' }}>{formatCurrency(b.totalDeposits || 0)}</div></div>
+            <div><span className="dim t-xs">Remaining Balance</span><div className="t-sm fw-600" style={{ color: b.remaining > 0 ? 'var(--c-red)' : 'var(--c-text)' }}>{formatCurrency(b.remaining)}</div></div>
             <div><span className="dim t-xs">Type</span><div className="t-sm">{b.billType} / {b.taxType || 'Normal'}</div></div>
             <div><span className="dim t-xs">Payment</span><div className="t-sm">{b.paymentMode}</div></div>
             {b.warrantyEnd && <div><span className="dim t-xs">Warranty Until</span><div className="t-sm">{formatDate(b.warrantyEnd)}</div></div>}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="t-xs dim">No final bill generated yet.</div>
+        )}
+      </div>
 
       <div className="card mt-3">
         <div className="t-sm fw-700 mb-2" style={{ textTransform: 'uppercase', fontSize: 10, letterSpacing: '.07em', color: 'var(--c-text3)' }}>Photos</div>
@@ -368,6 +459,88 @@ export default function JobDetail() {
           </div>
         )}
       </Modal>
+
+      <Modal open={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title="Reject Estimate & Close Job">
+        <form onSubmit={handleRejectSubmit}>
+          <div className="form-group">
+            <label className="form-label">Diagnostic Fee (₹)</label>
+            <input type="number" className="form-input" value={rejectFee} onChange={(e) => setRejectFee(e.target.value)} required min="0" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Payment Mode</label>
+            <select className="form-input" value={rejectMode} onChange={(e) => setRejectMode(e.target.value)}>
+              <option>Cash</option>
+              <option>Card</option>
+              <option>UPI</option>
+              <option>Bank Transfer</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setRejectModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" style={{ background: 'var(--c-red)' }}>Reject & Invoice</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={depositModalOpen} onClose={() => setDepositModalOpen(false)} title="Add Advance Deposit">
+        <form onSubmit={handleDepositSubmit}>
+          <div className="form-group">
+            <label className="form-label">Deposit Amount (₹)</label>
+            <input type="number" className="form-input" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} required min="1" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Payment Mode</label>
+            <select className="form-input" value={depositMode} onChange={(e) => setDepositMode(e.target.value)}>
+              <option>Cash</option>
+              <option>Card</option>
+              <option>UPI</option>
+              <option>Bank Transfer</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Notes (Optional)</label>
+            <input type="text" className="form-input" value={depositNotes} onChange={(e) => setDepositNotes(e.target.value)} placeholder="e.g. Paid by father" />
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setDepositModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Deposit</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={statusModalOpen} onClose={() => setStatusModalOpen(false)} title="Update Status">
+        <form onSubmit={handleUpdateStatusSubmit}>
+          <div className="form-group">
+            <label className="form-label">Main Column Status</label>
+            <select className="form-input" value={selectedMainStatus} onChange={(e) => {
+              setSelectedMainStatus(e.target.value);
+              setSelectedSubStatus('');
+            }} required>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Billed">Billed</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+          {(SUB_STATUS_MAP[selectedMainStatus] && SUB_STATUS_MAP[selectedMainStatus].length > 0) && (
+            <div className="form-group">
+              <label className="form-label">Exact Sub-Status (Optional)</label>
+              <select className="form-input" value={selectedSubStatus} onChange={(e) => setSelectedSubStatus(e.target.value)}>
+                <option value="">-- None --</option>
+                {SUB_STATUS_MAP[selectedMainStatus].map(st => (
+                  <option key={st} value={st}>{formatStatusName(st)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setStatusModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Update Status</button>
+          </div>
+        </form>
+      </Modal>
+
     </div>
   );
 }

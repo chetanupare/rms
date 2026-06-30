@@ -32,6 +32,7 @@ function KanbanCard({ job, onOpen, onStart, onComplete, onDeliver, onTransfer })
   const sla = getSLAClass(job);
   const customer = job.customer || {};
   const hours = (Date.now() - new Date(job.createdAt).getTime()) / 3600000;
+  const displayStatus = job.subStatus ? job.subStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : null;
 
   function handleDragStart(e) {
     e.dataTransfer.setData('text/plain', JSON.stringify({ id: job._id, jobId: job.jobId, fromStatus: job.status }));
@@ -52,8 +53,11 @@ function KanbanCard({ job, onOpen, onStart, onComplete, onDeliver, onTransfer })
     >
       <div className="flex items-center justify-between gap-1">
         <div className="mono t-xs fw-600" style={{ color: 'var(--c-accent)' }}>{job.jobId}</div>
-        {sla === 'overdue' && <span className="material-symbols-rounded" style={{ fontSize: 13, color: 'var(--c-red)' }} title={`Overdue! ${Math.round(hours)}h`}>local_fire_department</span>}
-        {sla === 'warning' && <span className="material-symbols-rounded" style={{ fontSize: 13, color: 'var(--c-amber)' }} title={`${Math.round(hours)}h elapsed`}>schedule</span>}
+        <div className="flex items-center gap-1">
+          {displayStatus && <span className="badge badge-ghost" style={{ fontSize: 9, padding: '1px 4px' }}>{displayStatus}</span>}
+          {sla === 'overdue' && <span className="material-symbols-rounded" style={{ fontSize: 13, color: 'var(--c-red)' }} title={`Overdue! ${Math.round(hours)}h`}>local_fire_department</span>}
+          {sla === 'warning' && <span className="material-symbols-rounded" style={{ fontSize: 13, color: 'var(--c-amber)' }} title={`${Math.round(hours)}h elapsed`}>schedule</span>}
+        </div>
       </div>
       <div className="t-xs fw-600 mt-1">{customer.name || '—'}</div>
       <div className="t-xs dim" style={{ lineHeight: 1.2 }}>{job.device || ''}{job.model ? ' · ' + job.model : ''}</div>
@@ -264,7 +268,7 @@ export default function Repairs() {
                     <td><span className="fw-600 t-xs">{customer.name}</span><div className="t-xs muted">{customer.mobile}</div></td>
                     <td className="t-xs">{job.device || customer.device || '—'}</td>
                     <td className="muted t-xs">{job.model || customer.model || '—'}</td>
-                    <td><span className={`badge ${statusBadgeClass(job.status)}`}>{job.status}</span></td>
+                    <td><span className={`badge ${statusBadgeClass(job.status)}`}>{job.subStatus ? job.subStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : job.status}</span></td>
                     <td className="muted t-xs">{job.technician || '—'}</td>
                     <td className="muted t-xs">{formatDate(job.createdAt)}</td>
                     <td>

@@ -108,12 +108,21 @@ router.post('/', async (req, res) => {
 
     let customerName = '';
     let customerPhone = bodyPhone || '';
+    let finalCustomerId = customerId || null;
+
     if (customerPhone) {
-      const cust = await req.db.collection('customers').findOne({ mobile: customerPhone }, { projection: { name: 1 } });
-      if (cust) customerName = cust.name || '';
+      const cust = await req.db.collection('customers').findOne({ mobile: customerPhone }, { projection: { name: 1, _id: 1 } });
+      if (cust) {
+        customerName = cust.name || '';
+        finalCustomerId = cust._id.toString();
+      }
     } else if (customerId) {
       const cust = await req.db.collection('customers').findOne({ _id: toId(customerId) }, { projection: { name: 1, mobile: 1 } });
-      if (cust) { customerName = cust.name || ''; customerPhone = cust.mobile || ''; }
+      if (cust) { 
+        customerName = cust.name || ''; 
+        customerPhone = cust.mobile || ''; 
+        finalCustomerId = cust._id.toString();
+      }
     }
 
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -130,7 +139,7 @@ router.post('/', async (req, res) => {
       ...(clientId ? { _id: clientId } : {}),
       jobId,
       trackingCode,
-      customerId: customerId || null,
+      customerId: finalCustomerId,
       customerName, customerPhone,
       branch: (branch || 'WANI').toUpperCase(),
       status: 'Pending',
@@ -206,7 +215,7 @@ router.post('/:id/transfer', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { status, diagnosticFee, paymentMode } = req.body;
+    const { status, subStatus, diagnosticFee, paymentMode } = req.body;
     const job = await req.db.collection('job_cards').findOne({ _id: toId(req.params.id) });
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
@@ -245,9 +254,12 @@ router.put('/:id', async (req, res) => {
       });
     }
 
+    const updateObj = { status: finalStatus };
+    if (subStatus !== undefined) updateObj.subStatus = subStatus;
+
     await req.db.collection('job_cards').updateOne(
       { _id: toId(req.params.id) },
-      { $set: { status: finalStatus } }
+      { $set: updateObj }
     );
     res.json({ message: 'Job card updated', status: finalStatus });
   } catch (err) {

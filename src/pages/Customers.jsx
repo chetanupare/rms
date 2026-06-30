@@ -77,7 +77,23 @@ export default function Customers() {
     setSaving(true);
     try {
       if (editing) { await endpoints.updateCustomer(editing._id, form); addToast('Customer updated', 'success'); }
-      else { await endpoints.createCustomer(form); addToast('Customer created with job', 'success'); }
+      else {
+        // Create user account
+        let customerPassword = '';
+        try {
+          const { data: userData } = await endpoints.createUser({ name: form.name, phone: form.mobile, role: 'customer' });
+          customerPassword = userData.credentials?.password || '';
+        } catch {}
+
+        await endpoints.createCustomer(form);
+        addToast('Customer created with job', 'success');
+
+        // Open WhatsApp with credentials
+        if (customerPassword) {
+          const waMessage = encodeURIComponent(`Hello ${form.name},\n\nYour account has been created.\n\nLogin to track your repairs:\nPhone: ${form.mobile}\nPassword: ${customerPassword}\n\nApp: ${window.location.origin}\n\n- Sai Laptop & Computer Gallery`);
+          window.open(`https://wa.me/91${form.mobile}?text=${waMessage}`, '_blank');
+        }
+      }
       setModalOpen(false);
       load();
     } catch (err) { addToast(err.response?.data?.message || 'Failed to save', 'error'); }

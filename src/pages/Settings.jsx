@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { api } from '../services/api';
+import { api, endpoints } from '../services/api';
 
 const isElectron = !!window.electronAPI?.isElectron;
 
@@ -54,6 +54,19 @@ export default function Settings() {
     }
   }
 
+  const [clearing, setClearing] = useState('');
+
+  async function handleClear(type) {
+    const labels = { jobs: 'all repair jobs & billing', customers: 'all customers', all: 'ALL data (jobs, customers, everything)' };
+    if (!confirm(`Are you sure you want to delete ${labels[type]}? This cannot be undone.`)) return;
+    setClearing(type);
+    try {
+      const { data } = await endpoints[type === 'jobs' ? 'clearJobs' : type === 'customers' ? 'clearCustomers' : 'clearAll']();
+      addToast(data.message, 'success');
+    } catch { addToast('Failed to clear data', 'error'); }
+    finally { setClearing(''); }
+  }
+
   return (
     <div style={{ animation: 'pageIn .25s ease' }}>
       <div className="page-header">
@@ -92,6 +105,27 @@ export default function Settings() {
           {backingUp ? <div className="spinner" style={{ width: 12, height: 12 }} /> : <span className="material-symbols-rounded" style={{ fontSize: 14 }}>download</span>}
           {backingUp ? 'Downloading...' : 'Download Backup'}
         </button>
+      </div>
+
+      <div className="card mt-4" style={{ maxWidth: 480 }}>
+        <div className="sec-head">
+          <span className="t-sm" style={{ color: 'var(--c-red)' }}>Danger Zone — Clear Data</span>
+        </div>
+        <p className="t-xs muted mb-3">Permanently delete data. This cannot be undone.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button className="btn" style={{ background: 'rgba(239,68,68,.1)', color: 'var(--c-red)', border: '1px solid rgba(239,68,68,.2)', justifyContent: 'flex-start' }} onClick={() => handleClear('jobs')} disabled={!!clearing}>
+            {clearing === 'jobs' ? <div className="spinner" style={{ width: 14, height: 14 }} /> : <span className="material-symbols-rounded" style={{ fontSize: 16 }}>delete_sweep</span>}
+            Clear All Repair Jobs & Billing
+          </button>
+          <button className="btn" style={{ background: 'rgba(239,68,68,.1)', color: 'var(--c-red)', border: '1px solid rgba(239,68,68,.2)', justifyContent: 'flex-start' }} onClick={() => handleClear('customers')} disabled={!!clearing}>
+            {clearing === 'customers' ? <div className="spinner" style={{ width: 14, height: 14 }} /> : <span className="material-symbols-rounded" style={{ fontSize: 16 }}>person_remove</span>}
+            Clear All Customers
+          </button>
+          <button className="btn" style={{ background: 'rgba(239,68,68,.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,.3)', justifyContent: 'flex-start', fontWeight: 600 }} onClick={() => handleClear('all')} disabled={!!clearing}>
+            {clearing === 'all' ? <div className="spinner" style={{ width: 14, height: 14 }} /> : <span className="material-symbols-rounded" style={{ fontSize: 16 }}>delete_forever</span>}
+            Clear ALL Data (Factory Reset)
+          </button>
+        </div>
       </div>
 
       <div className="card mt-4" style={{ maxWidth: 480 }}>

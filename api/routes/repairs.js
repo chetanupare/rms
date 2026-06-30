@@ -52,9 +52,10 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { status, diagnosis, estimateCost } = req.body;
+    const { status, subStatus, diagnosis, estimateCost } = req.body;
     const update = {};
     if (status) update.status = status;
+    if (subStatus !== undefined) update.subStatus = subStatus;
     if (diagnosis) update.diagnosis = diagnosis;
     if (estimateCost) update.estimateCost = Number(estimateCost);
     update.updatedAt = new Date();
@@ -70,10 +71,13 @@ router.put('/:id', async (req, res) => {
     }
 
     // Sync status back to master job card
-    if (status) {
+    if (status || subStatus !== undefined) {
+      const syncObj = {};
+      if (status) syncObj.status = status;
+      if (subStatus !== undefined) syncObj.subStatus = subStatus;
       await req.db.collection('job_cards').updateOne(
         { jobId: repair.value.jobId },
-        { $set: { status: status } }
+        { $set: syncObj }
       );
     }
 

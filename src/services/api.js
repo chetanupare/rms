@@ -47,6 +47,7 @@ export const endpoints = {
 
   billing: () => api.get('/billing', { params: withBranch() }),
   createBill: (payload) => api.post('/billing', payload),
+  addDeposit: (payload) => api.post('/billing/deposits', payload),
 
   brands: () => api.get('/brands', { params: withBranch() }),
   createBrand: (payload) => api.post('/brands', payload),
@@ -100,4 +101,11 @@ export const endpoints = {
   receptionTechnicians: () => api.get('/reception/technicians'),
   receptionUnassigned: () => api.get('/reception/unassigned'),
   assignJob: (jobId, technicianId) => api.post(`/reception/jobs/${jobId}/assign`, { technicianId }),
+
+  // Admin utilities
+  clearJobs: () => api.post('/admin/clear-jobs'),
+  clearCustomers: () => api.post('/admin/clear-customers'),
+  clearAll: () => api.post('/admin/clear-all'),
+  createUser: (data) => api.post('/admin/create-user', data),
+  saveDevice: (data) => api.post('/admin/save-device', data),
 };

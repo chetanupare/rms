@@ -178,6 +178,12 @@ export default function NewService() {
       const finalDeviceType = deviceTypeIsOther ? customDeviceType : deviceType;
       const finalBrand = brandIsOther ? customBrand : brand;
       const finalModel = modelIsOther ? customModel : model;
+
+      // Save custom device type/brand/model to DB
+      if (deviceTypeIsOther || brandIsOther || modelIsOther) {
+        try { await endpoints.saveDevice({ deviceType: finalDeviceType, brand: finalBrand, model: finalModel }); } catch {}
+      }
+
       const jobPayload = { device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, leadSource, accessories, condition, tags: selectedTags };
       if (existingCustomer) {
         const customerId = existingCustomer._id;
@@ -188,9 +194,25 @@ export default function NewService() {
         addToast('Service job created', 'success');
         navigate(`/job/${data._id}`);
       } else {
+        // Create user account for the customer
+        let customerPassword = '';
+        try {
+          const { data: userData } = await endpoints.createUser({ name: name || 'Guest', phone: mobile, role: 'customer' });
+          customerPassword = userData.credentials?.password || '';
+        } catch (err) {
+          // User might already exist, continue with job creation
+        }
+
         const custId = nanoid();
-        const { data } = await endpoints.createCustomer({ _id: custId, name: name || 'Guest', mobile, address: address || '', device: deviceType, brand, model, problem });
+        const { data } = await endpoints.createCustomer({ _id: custId, name: name || 'Guest', mobile, address: address || '', device: finalDeviceType, brand: finalBrand, model: finalModel, problem });
         addToast('Service job created', 'success');
+
+        // Open WhatsApp with credentials if new customer
+        if (customerPassword) {
+          const waMessage = encodeURIComponent(`Hello ${name || 'Customer'},\n\nYour service request has been created.\n\nLogin to track your repair:\nPhone: ${mobile}\nPassword: ${customerPassword}\n\nApp: ${window.location.origin}\n\n- Sai Laptop & Computer Gallery`);
+          window.open(`https://wa.me/91${mobile}?text=${waMessage}`, '_blank');
+        }
+
         navigate(`/job/${data.jobCardId}`);
       }
     } catch (err) { addToast(err.response?.data?.message || 'Failed to create job', 'error'); }
