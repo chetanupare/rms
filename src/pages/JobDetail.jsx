@@ -8,6 +8,7 @@ import { printA4Receipt, printThermalLabel } from '../utils/printService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 
 const LEAD_ICONS = {
   'In Store Visit': 'storefront', 'Customer Location Visit': 'local_shipping',
@@ -27,6 +28,7 @@ export default function JobDetail() {
   const [technicians, setTechnicians] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [assigning, setAssigning] = useState(null);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -36,6 +38,12 @@ export default function JobDetail() {
   useEffect(() => {
     if (data && document.getElementById('detail-barcode')) {
       try { JsBarcode('#detail-barcode', data.jobId, { format: 'CODE128', width: 2, height: 50, displayValue: true, fontSize: 12, margin: 4 }); } catch {}
+    }
+    if (data) {
+      const trackUrl = `${window.location.origin}/track/${data.trackingCode || data.jobId}`;
+      QRCode.toDataURL(trackUrl, { width: 200, margin: 2, color: { dark: '#1a1a2e', light: '#ffffff' } })
+        .then(setQrDataUrl)
+        .catch(() => setQrDataUrl(null));
     }
   }, [data]);
 
@@ -249,7 +257,13 @@ export default function JobDetail() {
         <div className="t-sm fw-700 mb-2" style={{ textTransform: 'uppercase', fontSize: 10, letterSpacing: '.07em', color: 'var(--c-text3)' }}>QR & Barcode</div>
         <div className="flex items-center gap-4" style={{ flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center' }}>
-            <img src={assetUrl(`/track/qr?url=${encodeURIComponent(`${window.location.origin}/track/${job.trackingCode || job.jobId}`)}`)} alt="QR" style={{ width: 100, height: 100, borderRadius: 6, background: '#fff' }} />
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt="QR" style={{ width: 100, height: 100, borderRadius: 6, background: '#fff' }} />
+            ) : (
+              <div style={{ width: 100, height: 100, borderRadius: 6, background: 'var(--c-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-rounded dim" style={{ fontSize: 32 }}>qr_code_2</span>
+              </div>
+            )}
             <div className="t-xs dim mt-1">Scan to track</div>
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>

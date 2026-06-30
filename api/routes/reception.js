@@ -31,7 +31,7 @@ async function autoAssignPending(db) {
   const userIds = onlineTechs.map(t => t.userId);
   const users = await db.collection('users').find({
     _id: { $in: userIds.map(id => toId(id)).filter(Boolean) },
-    role: 'technician',
+    role: { $regex: /^technician$/i },
   }).project({ _id: 1 }).toArray();
 
   if (!users.length) return;
@@ -119,7 +119,7 @@ router.get('/unassigned', async (req, res) => {
 router.get('/technicians', async (req, res) => {
   try {
     const techUsers = await req.db.collection('users').find(
-      { role: 'technician' },
+      { role: { $regex: /^technician$/i } },
       { projection: { password: 0 } }
     ).toArray();
 
@@ -168,7 +168,7 @@ router.post('/jobs/:id/assign', async (req, res) => {
     const job = await req.db.collection('job_cards').findOne({ jobId: id });
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
-    const tech = await req.db.collection('users').findOne({ _id: toId(technicianId), role: 'technician' });
+    const tech = await req.db.collection('users').findOne({ _id: toId(technicianId), role: { $regex: /^technician$/i } });
     if (!tech) return res.status(404).json({ message: 'Technician not found' });
 
     const now = new Date();
