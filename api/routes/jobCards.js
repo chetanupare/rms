@@ -18,15 +18,21 @@ router.get('/', async (req, res) => {
       .toArray();
 
     const phoneNumbers = jobs.map((j) => j.customerPhone).filter(Boolean);
+    const customerIds = jobs.filter((j) => !j.customerPhone && j.customerId).map((j) => j.customerId);
     const customers = phoneNumbers.length > 0
       ? await req.db.collection('customers').find({ mobile: { $in: phoneNumbers } }).toArray()
       : [];
+    const idCustomers = customerIds.length > 0
+      ? await req.db.collection('customers').find({ _id: { $in: customerIds.map((id) => toId(id)).filter(Boolean) } }).toArray()
+      : [];
     const customerMap = {};
     customers.forEach((c) => { customerMap[c.mobile] = c; });
+    const idCustomerMap = {};
+    idCustomers.forEach((c) => { idCustomerMap[c._id.toString()] = c; });
 
     const result = jobs.map((job) => ({
       ...job,
-      customer: customerMap[job.customerPhone] || (job.customerName ? { name: job.customerName, mobile: job.customerPhone } : null),
+      customer: customerMap[job.customerPhone] || idCustomerMap[job.customerId] || (job.customerName ? { name: job.customerName, mobile: job.customerPhone } : null),
     }));
 
     res.json(result);
@@ -41,7 +47,15 @@ router.get('/:id', async (req, res) => {
     const job = await req.db.collection('job_cards').findOne({ _id: id });
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
-    const customer = job.customerPhone ? await req.db.collection('customers').findOne({ mobile: job.customerPhone }) : null;
+    let customer = null;
+    if (job.customerPhone) {
+      customer = await req.db.collection('customers').findOne({ mobile: job.customerPhone });
+    } else if (job.customerId) {
+      customer = await req.db.collection('customers').findOne({ _id: toId(job.customerId) });
+    }
+    if (!customer && (job.customerName || job.customerPhone)) {
+      customer = { name: job.customerName || '', mobile: job.customerPhone || '' };
+    }
     const repair = await req.db.collection('repairs').findOne({ jobId: job.jobId });
     const bill = await req.db.collection('billing').findOne({ jobId: job.jobId });
     const activity = await req.db.collection('activity_logs').find({ jobId: job.jobId }).sort({ createdAt: -1 }).limit(20).toArray();
