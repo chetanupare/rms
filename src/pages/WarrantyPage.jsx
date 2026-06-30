@@ -18,7 +18,7 @@ export default function WarrantyPage() {
   const [checkMobile, setCheckMobile] = useState('');
   const [checkResult, setCheckResult] = useState(null);
   const [rmaModal, setRmaModal] = useState(false);
-  const [rmaForm, setRmaForm] = useState({ jobId: '', customerId: '', device: '', brand: '', model: '', problem: '', warrantyBillId: '' });
+  const [rmaForm, setRmaForm] = useState({ jobId: '', customerPhone: '', device: '', brand: '', model: '', problem: '', warrantyBillId: '' });
   const [rmaEdit, setRmaEdit] = useState(null);
   const [resolveForm, setResolveForm] = useState({ status: '', resolution: '' });
 
@@ -45,11 +45,11 @@ export default function WarrantyPage() {
 
   async function handleCreateRMA(e) {
     e.preventDefault();
-    if (!rmaForm.jobId || !rmaForm.customerId) return addToast('Job ID and Customer required', 'warning');
+    if (!rmaForm.jobId || !rmaForm.customerPhone) return addToast('Job ID and Customer Mobile required', 'warning');
     try {
       await endpoints.createRMA(rmaForm);
       addToast('RMA claim created', 'success');
-      setRmaModal(false); setRmaForm({ jobId: '', customerId: '', device: '', brand: '', model: '', problem: '', warrantyBillId: '' }); load();
+      setRmaModal(false); setRmaForm({ jobId: '', customerPhone: '', device: '', brand: '', model: '', problem: '', warrantyBillId: '' }); load();
     } catch (err) { addToast(err.response?.data?.message || 'Failed', 'error'); }
   }
 
@@ -177,7 +177,7 @@ export default function WarrantyPage() {
         <form onSubmit={handleCreateRMA}>
           <div className="grid-2">
             <div className="form-group"><label className="form-label">Original Job ID</label><input className="form-input" value={rmaForm.jobId} onChange={(e) => setRmaForm({ ...rmaForm, jobId: e.target.value })} placeholder="e.g. RM-20260626-000123" required /></div>
-            <div className="form-group"><label className="form-label">Customer ID</label><input className="form-input" value={rmaForm.customerId} onChange={(e) => setRmaForm({ ...rmaForm, customerId: e.target.value })} placeholder="MongoDB _id" required /></div>
+            <div className="form-group"><label className="form-label">Customer Mobile</label><input className="form-input" value={rmaForm.customerPhone} onChange={(e) => setRmaForm({ ...rmaForm, customerPhone: e.target.value })} placeholder="Enter mobile number" required /></div>
           </div>
           <div className="grid-2">
             <div className="form-group"><label className="form-label">Device</label><input className="form-input" value={rmaForm.device} onChange={(e) => setRmaForm({ ...rmaForm, device: e.target.value })} /></div>
