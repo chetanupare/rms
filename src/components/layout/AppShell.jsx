@@ -70,7 +70,7 @@ export default function AppShell() {
     }
   }
 
-  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(user?.role));
+  const visibleItems = NAV_ITEMS.filter((item) => item.roles.some(r => r.toLowerCase() === (user?.role || '').toLowerCase()));
 
   return (
     <div id="app">

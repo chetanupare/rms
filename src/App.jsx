@@ -26,13 +26,13 @@ import NotFound from './pages/NotFound';
 
 function TechnicianRoute({ children }) {
   const { user } = useAuth();
-  if (user?.role === 'Admin') return <Navigate to="/dashboard" replace />;
+  if ((user?.role || '').toLowerCase() === 'admin') return <Navigate to="/dashboard" replace />;
   return children;
 }
 
 function AdminRoute({ children }) {
   const { user } = useAuth();
-  if (user?.role !== 'Admin') return <Navigate to="/dashboard" replace />;
+  if ((user?.role || '').toLowerCase() !== 'admin') return <Navigate to="/dashboard" replace />;
   return children;
 }
 
