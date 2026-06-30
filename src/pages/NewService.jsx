@@ -53,6 +53,12 @@ export default function NewService() {
   const [deviceType, setDeviceType] = useState('Laptop');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
+  const [deviceTypeIsOther, setDeviceTypeIsOther] = useState(false);
+  const [brandIsOther, setBrandIsOther] = useState(false);
+  const [modelIsOther, setModelIsOther] = useState(false);
+  const [customDeviceType, setCustomDeviceType] = useState('');
+  const [customBrand, setCustomBrand] = useState('');
+  const [customModel, setCustomModel] = useState('');
   const [problem, setProblem] = useState('');
   const [leadSource, setLeadSource] = useState('In Store Visit');
   const [accessories, setAccessories] = useState([]);
@@ -159,14 +165,20 @@ export default function NewService() {
   }
 
   function canSubmit() {
-    return deviceType && brand && model && problem.trim() && leadSource && mobile.length >= 10;
+    const dt = deviceTypeIsOther ? customDeviceType : deviceType;
+    const b = brandIsOther ? customBrand : brand;
+    const m = modelIsOther ? customModel : model;
+    return dt && b && m && problem.trim() && leadSource && mobile.length >= 10;
   }
 
   async function handleSubmit() {
     if (!canSubmit() || saving) return;
     setSaving(true);
     try {
-      const jobPayload = { device: deviceType, brand, model, problem, branch, leadSource, accessories, condition, tags: selectedTags };
+      const finalDeviceType = deviceTypeIsOther ? customDeviceType : deviceType;
+      const finalBrand = brandIsOther ? customBrand : brand;
+      const finalModel = modelIsOther ? customModel : model;
+      const jobPayload = { device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, leadSource, accessories, condition, tags: selectedTags };
       if (existingCustomer) {
         const customerId = existingCustomer._id;
         if (name !== existingCustomer.name || address !== (existingCustomer.address || '')) {
@@ -210,29 +222,63 @@ export default function NewService() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 24 }}>
           <div>
             <label style={s.label}>Device Type</label>
-            <select style={{ ...s.input, cursor: 'pointer', fontSize: 16, fontWeight: 600 }} value={deviceType}
-              onChange={(e) => { setDeviceType(e.target.value); setBrand(''); setModel(''); }}
-              onFocus={focusStyle} onBlur={blurStyle}>
-              {deviceTypes.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            {deviceTypeIsOther ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input style={{ ...s.input, flex: 1 }} value={customDeviceType} onChange={(e) => setCustomDeviceType(e.target.value)} placeholder="Enter device type" onFocus={focusStyle} onBlur={blurStyle} autoFocus />
+                <button type="button" style={{ padding: '0 12px', background: 'var(--c-surface2)', border: '1.5px solid var(--c-border2)', borderRadius: 12, cursor: 'pointer', color: 'var(--c-text2)' }} onClick={() => { setDeviceTypeIsOther(false); setCustomDeviceType(''); setDeviceType('Laptop'); }}>✕</button>
+              </div>
+            ) : (
+              <select style={{ ...s.input, cursor: 'pointer', fontSize: 16, fontWeight: 600 }} value={deviceType}
+                onChange={(e) => {
+                  if (e.target.value === '__other__') { setDeviceTypeIsOther(true); setDeviceType(''); setBrand(''); setBrandIsOther(false); setCustomBrand(''); setModel(''); setModelIsOther(false); setCustomModel(''); }
+                  else { setDeviceType(e.target.value); setBrand(''); setBrandIsOther(false); setCustomBrand(''); setModel(''); setModelIsOther(false); setCustomModel(''); }
+                }}
+                onFocus={focusStyle} onBlur={blurStyle}>
+                {deviceTypes.map(d => <option key={d} value={d}>{d}</option>)}
+                <option value="__other__">Other (type your own)</option>
+              </select>
+            )}
           </div>
           <div>
             <label style={s.label}>Brand</label>
-            <select style={{ ...s.input, cursor: 'pointer' }} value={brand}
-              onChange={(e) => { setBrand(e.target.value); setModel(''); }}
-              onFocus={focusStyle} onBlur={blurStyle}>
-              <option value="">Select brand...</option>
-              {filteredBrands.map(b => <option key={b._id} value={b.name}>{b.name}</option>)}
-            </select>
+            {brandIsOther ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input style={{ ...s.input, flex: 1 }} value={customBrand} onChange={(e) => setCustomBrand(e.target.value)} placeholder="Enter brand name" onFocus={focusStyle} onBlur={blurStyle} autoFocus />
+                <button type="button" style={{ padding: '0 12px', background: 'var(--c-surface2)', border: '1.5px solid var(--c-border2)', borderRadius: 12, cursor: 'pointer', color: 'var(--c-text2)' }} onClick={() => { setBrandIsOther(false); setCustomBrand(''); }}>✕</button>
+              </div>
+            ) : (
+              <select style={{ ...s.input, cursor: 'pointer' }} value={brand}
+                onChange={(e) => {
+                  if (e.target.value === '__other__') { setBrandIsOther(true); setBrand(''); setModel(''); setModelIsOther(false); setCustomModel(''); }
+                  else { setBrand(e.target.value); setModel(''); setModelIsOther(false); setCustomModel(''); }
+                }}
+                onFocus={focusStyle} onBlur={blurStyle}>
+                <option value="">Select brand...</option>
+                {filteredBrands.map(b => <option key={b._id} value={b.name}>{b.name}</option>)}
+                <option value="__other__">Other (type your own)</option>
+              </select>
+            )}
           </div>
           <div>
             <label style={s.label}>Model</label>
-            <select style={{ ...s.input, cursor: 'pointer' }} value={model}
-              onChange={(e) => setModel(e.target.value)} disabled={!brand}
-              onFocus={focusStyle} onBlur={blurStyle}>
-              <option value="">Select model...</option>
-              {filteredModels.map(m => <option key={m._id} value={m.modelName}>{m.modelName}</option>)}
-            </select>
+            {modelIsOther ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input style={{ ...s.input, flex: 1 }} value={customModel} onChange={(e) => setCustomModel(e.target.value)} placeholder="Enter model name" onFocus={focusStyle} onBlur={blurStyle} autoFocus />
+                <button type="button" style={{ padding: '0 12px', background: 'var(--c-surface2)', border: '1.5px solid var(--c-border2)', borderRadius: 12, cursor: 'pointer', color: 'var(--c-text2)' }} onClick={() => { setModelIsOther(false); setCustomModel(''); }}>✕</button>
+              </div>
+            ) : (
+              <select style={{ ...s.input, cursor: 'pointer' }} value={model}
+                onChange={(e) => {
+                  if (e.target.value === '__other__') { setModelIsOther(true); setModel(''); }
+                  else setModel(e.target.value);
+                }}
+                disabled={!brand && !brandIsOther}
+                onFocus={focusStyle} onBlur={blurStyle}>
+                <option value="">Select model...</option>
+                {filteredModels.map(m => <option key={m._id} value={m.modelName}>{m.modelName}</option>)}
+                <option value="__other__">Other (type your own)</option>
+              </select>
+            )}
           </div>
         </div>
         <div ref={problemSuggestRef} style={{ position: 'relative' }}>
