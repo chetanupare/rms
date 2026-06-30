@@ -140,7 +140,8 @@ export default function JobDetail() {
           </div>
         </div>
         <div className="page-actions">
-          {job.status === 'Pending' && <button className="btn btn-primary" onClick={openTechModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>play_arrow</span> Start & Assign</button>}
+          {job.status === 'Pending' && !job.technicianId && <button className="btn btn-primary" onClick={openTechModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>play_arrow</span> Start & Assign</button>}
+          {job.status === 'Pending' && job.technicianId && <span className="badge" style={{ background: 'rgba(245,158,11,.12)', color: 'var(--c-amber)', fontSize: 11 }}>Awaiting technician acceptance</span>}
           {job.status === 'In Progress' && <button className="btn btn-primary" onClick={handleComplete}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>check</span> Complete</button>}
           {job.status === 'Billed' && <button className="btn btn-primary" onClick={handleDeliver}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>handshake</span> Deliver</button>}
           {c.mobile && <button className="btn btn-ghost" onClick={() => openWhatsApp(c.mobile, `Hi ${c.name}, job ${job.jobId} (${job.device} ${job.model}) is: ${job.status}.`)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>chat</span> WhatsApp</button>}

@@ -62,12 +62,24 @@ router.get('/:id', async (req, res) => {
 
     let technician = null;
     if (job.technicianId) {
-      const techUser = await req.db.collection('users').findOne(
-        { _id: toId(job.technicianId) },
-        { projection: { password: 0 } }
-      );
+      let techUser = null;
+      try {
+        techUser = await req.db.collection('users').findOne(
+          { _id: toId(job.technicianId) },
+          { projection: { password: 0 } }
+        );
+      } catch {}
+      if (!techUser) {
+        techUser = await req.db.collection('users').findOne(
+          { _id: job.technicianId },
+          { projection: { password: 0 } }
+        );
+      }
       const techStatus = await req.db.collection('technician_status').findOne({ userId: job.technicianId });
-      const offer = await req.db.collection('job_offers').findOne({ jobId: job.jobId, technicianId: job.technicianId });
+      const offer = await req.db.collection('job_offers').findOne(
+        { jobId: job.jobId, technicianId: job.technicianId },
+        { sort: { createdAt: -1 } }
+      );
       if (techUser) {
         technician = {
           _id: techUser._id.toString(),

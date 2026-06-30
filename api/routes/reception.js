@@ -167,6 +167,7 @@ router.post('/jobs/:id/assign', async (req, res) => {
 
     const job = await req.db.collection('job_cards').findOne({ jobId: id });
     if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (job.technicianId) return res.status(400).json({ message: 'Job already assigned to a technician' });
 
     const tech = await req.db.collection('users').findOne({ _id: toId(technicianId), role: { $regex: /^technician$/i } });
     if (!tech) return res.status(404).json({ message: 'Technician not found' });
