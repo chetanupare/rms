@@ -141,10 +141,24 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { name, mobile, address } = req.body;
+    
+    // Fetch existing to check if mobile changed
+    const customer = await req.db.collection('customers').findOne({ _id: toId(req.params.id) });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
     await req.db.collection('customers').updateOne(
       { _id: toId(req.params.id) },
       { $set: { name, mobile, address } }
     );
+
+    // If mobile number changed, migrate all old job_cards to the new number
+    if (customer.mobile !== mobile) {
+      await req.db.collection('job_cards').updateMany(
+        { customerPhone: customer.mobile },
+        { $set: { customerPhone: mobile } }
+      );
+    }
+
     res.json({ message: 'Customer updated' });
   } catch (err) {
     res.status(500).json({ message: err.message });

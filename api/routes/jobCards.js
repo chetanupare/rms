@@ -206,12 +206,50 @@ router.post('/:id/transfer', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, diagnosticFee, paymentMode } = req.body;
+    const job = await req.db.collection('job_cards').findOne({ _id: toId(req.params.id) });
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    const now = new Date();
+
+    // KPI Tracking for waiting_parts
+    if (job.status !== 'waiting_parts' && status === 'waiting_parts') {
+      await req.db.collection('activity_logs').insertOne({ jobId: job.jobId, action: 'status_change', details: 'Entered waiting_parts (KPI paused)', createdAt: now });
+    } else if (job.status === 'waiting_parts' && status !== 'waiting_parts') {
+      await req.db.collection('activity_logs').insertOne({ jobId: job.jobId, action: 'status_change', details: 'Exited waiting_parts (KPI resumed)', createdAt: now });
+    }
+
+    let finalStatus = status;
+
+    // Handle Rejected / Diagnostic Only workflow
+    if (status === 'Rejected' || status === 'Closed (Diagnostic Only)') {
+      finalStatus = 'Delivered'; // Terminal state
+      const fee = Number(diagnosticFee) || 300; // Default to 300 if not provided
+      
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const seq = await req.db.collection('sequences').findOneAndUpdate({ _id: 'invoiceNo' }, { $inc: { seq: 1 } }, { upsert: true, returnDocument: 'after' });
+      const invoiceNo = `INV-${dateStr}-${String(seq?.value?.seq || seq?.seq || 1).padStart(4, '0')}`;
+
+      // Create service bill
+      await req.db.collection('billing').insertOne({
+        invoiceNo, jobId: job.jobId, billType: 'Service', taxType: 'Normal Bill',
+        amount: fee, totalDeposits: 0, remaining: fee,
+        paymentMode: paymentMode || 'Cash', payments: [],
+        warrantyDays: 0, warrantyEnd: now, createdAt: now
+      });
+
+      await req.db.collection('register_entries').insertOne({
+        date: now.toISOString().slice(0, 10), type: 'in', category: 'Repair Payment', amount: fee,
+        description: `Diagnostic Fee for Rejected Estimate ${job.jobId}`, paymentMode: paymentMode || 'Cash',
+        createdBy: req.user?.username || 'system', createdAt: now, updatedAt: now, finalized: false,
+      });
+    }
+
     await req.db.collection('job_cards').updateOne(
       { _id: toId(req.params.id) },
-      { $set: { status } }
+      { $set: { status: finalStatus } }
     );
-    res.json({ message: 'Job card updated' });
+    res.json({ message: 'Job card updated', status: finalStatus });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -24,7 +24,7 @@ import registerRoutes from './routes/register.js';
 import inventoryRoutes from './routes/inventory.js';
 import warrantyRoutes from './routes/warranty.js';
 import receptionRoutes from './routes/reception.js';
-import { seedAdmin, seedDeviceData, seedIndexes, seedInventory } from './seed.js';
+import { seedAdmin, seedIndexes } from './seed.js';
 import { logger } from './logger.js';
 
 const app = express();
@@ -62,9 +62,7 @@ async function start() {
     const db = client.db();
 
     await seedAdmin(db);
-    await seedDeviceData(db);
     await seedIndexes(db);
-    await seedInventory(db);
 
     app.get('/api/tags', authenticate, async (req, res) => {
       try {

@@ -59,11 +59,25 @@ router.put('/:id', async (req, res) => {
     if (estimateCost) update.estimateCost = Number(estimateCost);
     update.updatedAt = new Date();
 
-    await req.db.collection('repairs').updateOne(
+    const repair = await req.db.collection('repairs').findOneAndUpdate(
       { _id: new ObjectId(req.params.id) },
-      { $set: update }
+      { $set: update },
+      { returnDocument: 'after' }
     );
-    res.json({ message: 'Repair updated' });
+    
+    if (!repair || !repair.value) {
+      return res.status(404).json({ message: 'Repair not found' });
+    }
+
+    // Sync status back to master job card
+    if (status) {
+      await req.db.collection('job_cards').updateOne(
+        { jobId: repair.value.jobId },
+        { $set: { status: status } }
+      );
+    }
+
+    res.json({ message: 'Repair updated', repair: repair.value });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
