@@ -10,8 +10,10 @@ import { getInitials } from '../../utils/helpers';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: 'grid_view', path: '/dashboard', roles: ['Admin', 'Technician'] },
+  { label: 'New Service', icon: 'add_circle', path: '/service/new', roles: ['Admin', 'Technician'] },
   { label: 'Customers', icon: 'people', path: '/customers', roles: ['Admin', 'Technician'] },
   { label: 'Repairs', icon: 'build', path: '/repairs', roles: ['Admin', 'Technician'] },
+  { label: 'Technicians', icon: 'engineering', path: '/technicians', roles: ['Admin'] },
   { label: 'Billing', icon: 'receipt_long', path: '/billing', roles: ['Admin'] },
   { label: 'Reports', icon: 'bar_chart', path: '/reports', roles: ['Admin'] },
   { label: 'Daily Registrar', icon: 'account_balance', path: '/register', roles: ['Admin'] },

@@ -11,6 +11,8 @@ export async function printA4Receipt(job, customer, repair, bill, baseUrl) {
   const trackingUrl = `${origin}/track/${job.trackingCode || job.jobId}`;
   const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
+  w.document.write('<html><head><title>Loading...</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#666">Generating receipt...</body></html>');
+
   let qrSrc = '';
   try { qrSrc = await generateQRDataUrl(trackingUrl); } catch {}
 
@@ -54,7 +56,7 @@ export async function printA4Receipt(job, customer, repair, bill, baseUrl) {
     </style></head><body>
     <div class="head">
       <div style="display:flex;align-items:center;gap:10px">
-        <div><h1>Sai Laptop &amp; Computer Gallery</h1><div class="sub">Wani, Maharashtra — 445304</div></div>
+        <div><h1>Sai Laptop &amp; Computer Gallery</h1><div class="sub">Virani Complex, 1st Floor (near Virani Function Hall/Talkies), Wani, Yavatmal, Maharashtra</div><div class="sub">+91-9823687568 · +91-9049687568 · +91-9067687568</div></div>
       </div>
       <div class="id">${job.jobId}</div>
     </div>
@@ -103,6 +105,8 @@ export async function printThermalLabel(job, customer, baseUrl) {
   const w = window.open('', '_blank');
   if (!w) return;
   const trackingUrl = `${baseUrl || window.location.origin}/track/${job.trackingCode || job.jobId}`;
+
+  w.document.write('<html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#666;font-size:12px">Generating label...</body></html>');
 
   let qrSrc = '';
   try { qrSrc = await generateQRDataUrl(trackingUrl); } catch {}

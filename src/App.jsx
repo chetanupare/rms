@@ -22,6 +22,8 @@ import DataWarehouse from './pages/DataWarehouse';
 import DailyRegistrar from './pages/DailyRegistrar';
 import Inventory from './pages/Inventory';
 import WarrantyPage from './pages/WarrantyPage';
+import NewService from './pages/NewService';
+import Technicians from './pages/Technicians';
 import NotFound from './pages/NotFound';
 
 function TechnicianRoute({ children }) {
@@ -63,6 +65,8 @@ function App() {
                 <Route path="/register" element={<AdminRoute><DailyRegistrar /></AdminRoute>} />
                 <Route path="/inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
                 <Route path="/warranty" element={<AdminRoute><WarrantyPage /></AdminRoute>} />
+                <Route path="/service/new" element={<NewService />} />
+                <Route path="/technicians" element={<Technicians />} />
               </Route>
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<NotFound />} />
