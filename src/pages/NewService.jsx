@@ -7,32 +7,37 @@ import { useBranch } from '../context/BranchContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const LEAD_SOURCES = [
-  { value: 'In Store Visit', icon: 'storefront', desc: 'Customer walked in', key: '1' },
-  { value: 'Customer Location Visit', icon: 'local_shipping', desc: 'On-site service', key: '2' },
-  { value: 'Telephone', icon: 'phone_in_talk', desc: 'Called for service', key: '3' },
-  { value: 'WhatsApp / Social Media', icon: 'chat', desc: 'Online inquiry', key: '4' },
-  { value: 'Reference / Walk-in', icon: 'groups', desc: 'Referred by someone', key: '5' },
+  { value: 'In Store Visit', icon: 'storefront', desc: 'Walked in', key: '1' },
+  { value: 'Customer Location Visit', icon: 'local_shipping', desc: 'On-site', key: '2' },
+  { value: 'Telephone', icon: 'phone_in_talk', desc: 'Phone call', key: '3' },
+  { value: 'WhatsApp / Social Media', icon: 'chat', desc: 'Online', key: '4' },
+  { value: 'Reference / Walk-in', icon: 'groups', desc: 'Referred', key: '5' },
 ];
 const ACCESSORY_ITEMS = ['Charger', 'Bag', 'Original Box', 'Cable', 'Mouse', 'Warranty Card', 'Bill', 'Stylus'];
-const CONDITION_ITEMS = ['Screen Scratches', 'Dents', 'Cracked Screen', 'Broken Hinge', 'Keyboard Missing Key', 'Scratches on Body', 'Liquid Damage', 'Burning Smell'];
+const CONDITION_ITEMS = ['Screen Scratches', 'Dents', 'Cracked Screen', 'Broken Hinge', 'Keyboard Missing Key', 'Body Scratches', 'Liquid Damage', 'Burning Smell'];
 
-function FieldLabel({ children, hint }) {
-  return (
-    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--c-text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-      {children} {hint && <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--c-text3)', letterSpacing: 0 }}>{hint}</span>}
-    </label>
-  );
-}
+const s = {
+  input: { width: '100%', padding: '14px 16px', background: 'var(--c-surface)', border: '1.5px solid var(--c-border2)', borderRadius: 12, color: 'var(--c-text)', fontSize: 15, fontFamily: 'inherit', outline: 'none', transition: 'border-color .15s, box-shadow .15s' },
+  label: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--c-text2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' },
+  card: { background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 16, padding: 28 },
+  sectionTitle: { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 },
+};
 
-function Chip({ label, active, onClick }) {
+function focusStyle(e) { e.target.style.borderColor = 'var(--c-accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(205,0,99,.15)'; }
+function blurStyle(e) { e.target.style.borderColor = 'var(--c-border2)'; e.target.style.boxShadow = 'none'; }
+
+function Chip({ label, active, onClick, icon }) {
   return (
     <button type="button" onClick={onClick} style={{
-      padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+      padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
       border: `1.5px solid ${active ? 'var(--c-accent)' : 'var(--c-border2)'}`,
       background: active ? 'rgba(205,0,99,.12)' : 'var(--c-surface2)',
       color: active ? 'var(--c-accent)' : 'var(--c-text2)',
-      transition: 'all .12s', whiteSpace: 'nowrap',
-    }}>{label}</button>
+      transition: 'all .12s', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      {icon && <span className="material-symbols-rounded" style={{ fontSize: 16 }}>{icon}</span>}
+      {label}
+    </button>
   );
 }
 
@@ -40,14 +45,11 @@ export default function NewService() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { branch } = useBranch();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
   const [jobTags, setJobTags] = useState([]);
-
-  // Step 1: Device
   const [deviceType, setDeviceType] = useState('Laptop');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -57,8 +59,6 @@ export default function NewService() {
   const [condition, setCondition] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState('');
-
-  // Step 2: Customer
   const [mobile, setMobile] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -66,36 +66,29 @@ export default function NewService() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  // Problem suggestions
   const [problemSuggestions, setProblemSuggestions] = useState([]);
   const [showProblemSuggest, setShowProblemSuggest] = useState(false);
   const [searchingProblems, setSearchingProblems] = useState(false);
-
-  // Refs
   const problemRef = useRef(null);
   const mobileRef = useRef(null);
-  const nameRef = useRef(null);
   const searchRef = useRef(null);
   const problemSuggestRef = useRef(null);
   const searchTimerRef = useRef(null);
   const problemTimerRef = useRef(null);
 
-  // Keyboard navigation
   useEffect(() => {
     function handleKey(e) {
       if (e.key === 'Escape') { navigate(-1); return; }
-      // Lead source shortcuts 1-5
-      if (!e.ctrlKey && !e.metaKey && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        const n = parseInt(e.key);
-        if (n >= 1 && n <= 5) { e.preventDefault(); setLeadSource(LEAD_SOURCES[n - 1].value); }
-      }
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= 5) { e.preventDefault(); setLeadSource(LEAD_SOURCES[n - 1].value); }
+      if (e.key === 'Enter' && canSubmit()) { e.preventDefault(); handleSubmit(); }
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [navigate]);
+  }, [navigate, deviceType, brand, model, problem, leadSource, mobile, name, address, saving]);
 
-  // Load data
   useEffect(() => {
     setLoading(true);
     Promise.all([endpoints.brands(), endpoints.deviceModels(), endpoints.tags()])
@@ -104,7 +97,6 @@ export default function NewService() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Click outside handlers
   useEffect(() => {
     function handleClick(e) {
       if (searchRef.current && !searchRef.current.contains(e.target)) setShowDropdown(false);
@@ -114,16 +106,13 @@ export default function NewService() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Focus problem on load
   useEffect(() => { if (!loading) setTimeout(() => problemRef.current?.focus(), 200); }, [loading]);
 
   const deviceTypes = [...new Set(brands.map(b => b.deviceType))];
   const filteredBrands = brands.filter(b => b.deviceType === deviceType);
   const filteredModels = models.filter(m => m.brand === brand && m.deviceType === deviceType);
 
-  function toggle(item, list, setList) {
-    setList(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]);
-  }
+  function toggle(item, list, setList) { setList(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]); }
 
   async function handleCreateTag() {
     const val = newTagInput.trim().toUpperCase();
@@ -166,15 +155,15 @@ export default function NewService() {
     setExistingCustomer(c); setName(c.name); setMobile(c.mobile); setAddress(c.address || '');
     setShowDropdown(false); setSearchResults([]);
     addToast(`Found ${c.name}`, 'success');
+    problemRef.current?.focus();
   }
 
   function canSubmit() {
     return deviceType && brand && model && problem.trim() && leadSource && mobile.length >= 10;
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!canSubmit()) return;
+  async function handleSubmit() {
+    if (!canSubmit() || saving) return;
     setSaving(true);
     try {
       const jobPayload = { device: deviceType, brand, model, problem, branch, leadSource, accessories, condition, tags: selectedTags };
@@ -198,205 +187,206 @@ export default function NewService() {
 
   if (loading) return <LoadingSpinner text="Loading..." />;
 
-  const inputStyle = {
-    width: '100%', padding: '12px 14px', background: 'var(--c-surface)', border: '1.5px solid var(--c-border2)',
-    borderRadius: 10, color: 'var(--c-text)', fontSize: 14, fontFamily: 'inherit', outline: 'none',
-    transition: 'border-color .15s, box-shadow .15s',
-  };
-  const inputFocusStyle = { onFocus: (e) => { e.target.style.borderColor = 'var(--c-accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(205,0,99,.15)'; }, onBlur: (e) => { e.target.style.borderColor = 'var(--c-border2)'; e.target.style.boxShadow = 'none'; } };
-
   return (
-    <div style={{ animation: 'pageIn .25s ease' }}>
-      <form onSubmit={handleSubmit}>
-        {/* Header */}
-        <div className="page-header" style={{ marginBottom: 24 }}>
-          <div className="page-title">
-            <div className="flex items-center gap-3">
-              <button type="button" className="btn-icon" onClick={() => navigate(-1)} title="Back"><span className="material-symbols-rounded">arrow_back</span></button>
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>New Service Job</div>
-                <div style={{ fontSize: 12, color: 'var(--c-text3)' }}>Create a new repair ticket</div>
-              </div>
+    <div style={{ animation: 'pageIn .25s ease', maxWidth: 900, margin: '0 auto', paddingBottom: 40 }}>
+      {/* Header */}
+      <div className="page-header" style={{ marginBottom: 28 }}>
+        <div className="page-title">
+          <div className="flex items-center gap-3">
+            <button type="button" className="btn-icon" onClick={() => navigate(-1)}><span className="material-symbols-rounded">arrow_back</span></button>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>New Service Job</div>
+              <div style={{ fontSize: 12, color: 'var(--c-text3)' }}>Fill in the details below — Tab to navigate, Enter to submit</div>
             </div>
           </div>
-          <div className="page-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)} style={{ padding: '10px 20px' }}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={!canSubmit() || saving} style={{ padding: '10px 28px', fontSize: 14, fontWeight: 600 }}>
-              {saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><span className="material-symbols-rounded" style={{ fontSize: 18 }}>add_task</span> Create Job</>}
+        </div>
+      </div>
+
+      {/* Device Section */}
+      <div style={s.card}>
+        <div style={s.sectionTitle}>
+          <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-accent)' }}>devices</span> Device Information
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 24 }}>
+          <div>
+            <label style={s.label}>Device Type</label>
+            <select style={{ ...s.input, cursor: 'pointer', fontSize: 16, fontWeight: 600 }} value={deviceType}
+              onChange={(e) => { setDeviceType(e.target.value); setBrand(''); setModel(''); }}
+              onFocus={focusStyle} onBlur={blurStyle}>
+              {deviceTypes.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={s.label}>Brand</label>
+            <select style={{ ...s.input, cursor: 'pointer' }} value={brand}
+              onChange={(e) => { setBrand(e.target.value); setModel(''); }}
+              onFocus={focusStyle} onBlur={blurStyle}>
+              <option value="">Select brand...</option>
+              {filteredBrands.map(b => <option key={b._id} value={b.name}>{b.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={s.label}>Model</label>
+            <select style={{ ...s.input, cursor: 'pointer' }} value={model}
+              onChange={(e) => setModel(e.target.value)} disabled={!brand}
+              onFocus={focusStyle} onBlur={blurStyle}>
+              <option value="">Select model...</option>
+              {filteredModels.map(m => <option key={m._id} value={m.modelName}>{m.modelName}</option>)}
+            </select>
+          </div>
+        </div>
+        <div ref={problemSuggestRef} style={{ position: 'relative' }}>
+          <label style={s.label}>Problem Reported</label>
+          <textarea ref={problemRef} style={{ ...s.input, resize: 'vertical', minHeight: 100, fontSize: 15 }}
+            rows={3} value={problem} onChange={(e) => handleProblemChange(e.target.value)}
+            placeholder="Describe the issue reported by the customer..."
+            onFocus={focusStyle} onBlur={blurStyle} />
+          {searchingProblems && <div className="spinner" style={{ position: 'absolute', right: 14, top: 44, width: 18, height: 18 }} />}
+          {showProblemSuggest && problemSuggestions.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 12, boxShadow: '0 12px 48px rgba(0,0,0,.5)', maxHeight: 220, overflow: 'auto', marginTop: 4 }}>
+              {problemSuggestions.map((p, i) => (
+                <button key={i} type="button" onClick={() => { setProblem(p.problem); setShowProblemSuggest(false); }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--c-surface2)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-text3)' }}>history</span>
+                  <div><div>{p.problem}</div><div style={{ fontSize: 12, color: 'var(--c-text3)' }}>{p.device} — {p.brand} {p.model}</div></div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Customer Section */}
+      <div style={{ ...s.card, marginTop: 20 }}>
+        <div style={s.sectionTitle}>
+          <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-accent)' }}>person</span> Customer Information
+        </div>
+        <div ref={searchRef} style={{ position: 'relative', marginBottom: 20 }}>
+          <label style={s.label}>Mobile Number</label>
+          <div className="flex gap-3 items-center">
+            <input ref={mobileRef} style={{ ...s.input, fontSize: 18, letterSpacing: '2px', fontWeight: 600 }}
+              value={mobile} onChange={(e) => handleMobileChange(e.target.value)}
+              placeholder="Enter 10-digit mobile" maxLength={10}
+              onFocus={focusStyle} onBlur={blurStyle} />
+            {searching && <div className="spinner" style={{ width: 20, height: 20, flexShrink: 0 }} />}
+          </div>
+          {showDropdown && searchResults.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 12, boxShadow: '0 12px 48px rgba(0,0,0,.5)', maxHeight: 220, overflow: 'auto', marginTop: 4 }}>
+              {searchResults.map((c) => (
+                <button key={c._id} type="button" onClick={() => selectCustomer(c)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--c-surface2)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-accent)' }}>person</span>
+                  <div><div style={{ fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: 12, color: 'var(--c-text3)' }}>{c.mobile}</div></div>
+                </button>
+              ))}
+            </div>
+          )}
+          {existingCustomer && (
+            <div style={{ marginTop: 10, background: 'rgba(6,182,212,.08)', border: '1px solid rgba(6,182,212,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--c-cyan)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>info</span>
+              Existing customer found — details auto-filled
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+          <div>
+            <label style={s.label}>Customer Name</label>
+            <input style={s.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
+              onFocus={focusStyle} onBlur={blurStyle} />
+          </div>
+          <div>
+            <label style={s.label}>Branch</label>
+            <input style={{ ...s.input, background: 'var(--c-surface2)', color: 'var(--c-text2)' }} value={branch} readOnly />
+          </div>
+        </div>
+        <div>
+          <label style={s.label}>Address <span style={{ fontWeight: 400, color: 'var(--c-text3)' }}>(optional)</span></label>
+          <input style={s.input} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Customer address"
+            onFocus={focusStyle} onBlur={blurStyle} />
+        </div>
+      </div>
+
+      {/* Lead Source */}
+      <div style={{ ...s.card, marginTop: 20 }}>
+        <div style={s.sectionTitle}>
+          <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-accent)' }}>share</span> Lead Source
+          <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--c-text3)', marginLeft: 4 }}>— press 1–5</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+          {LEAD_SOURCES.map((ls) => (
+            <button key={ls.value} type="button" onClick={() => setLeadSource(ls.value)} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '18px 12px',
+              background: leadSource === ls.value ? 'rgba(205,0,99,.12)' : 'var(--c-surface2)',
+              border: `2px solid ${leadSource === ls.value ? 'var(--c-accent)' : 'var(--c-border2)'}`,
+              borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s', position: 'relative',
+            }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: leadSource === ls.value ? 'var(--gradient-brand)' : 'var(--c-surface3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: 22, color: leadSource === ls.value ? '#fff' : 'var(--c-text3)' }}>{ls.icon}</span>
+                <span style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: '50%', background: 'var(--c-accent)', fontSize: 10, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ls.key}</span>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: leadSource === ls.value ? 'var(--c-accent)' : 'var(--c-text)' }}>{ls.value}</div>
+                <div style={{ fontSize: 10, color: 'var(--c-text3)', marginTop: 2 }}>{ls.desc}</div>
+              </div>
+              {leadSource === ls.value && <span className="material-symbols-rounded" style={{ position: 'absolute', top: 8, right: 8, fontSize: 18, color: 'var(--c-accent)' }}>check_circle</span>}
             </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Accessories & Condition */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+        <div style={s.card}>
+          <div style={s.sectionTitle}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-accent)' }}>inventory_2</span> Accessories Received
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {ACCESSORY_ITEMS.map(item => <Chip key={item} label={item} active={accessories.includes(item)} onClick={() => toggle(item, accessories, setAccessories)} />)}
           </div>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-          {/* Left Column - Main Form */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Device Card */}
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-accent)' }}>devices</span> Device Information
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-                <div>
-                  <FieldLabel>Device Type</FieldLabel>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={deviceType} onChange={(e) => { setDeviceType(e.target.value); setBrand(''); setModel(''); }}>
-                    {deviceTypes.map(d => <option key={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <FieldLabel>Brand</FieldLabel>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(''); }}>
-                    <option value="">Select brand...</option>
-                    {filteredBrands.map(b => <option key={b._id} value={b.name}>{b.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <FieldLabel>Model</FieldLabel>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={model} onChange={(e) => setModel(e.target.value)} disabled={!brand}>
-                    <option value="">Select model...</option>
-                    {filteredModels.map(m => <option key={m._id} value={m.modelName}>{m.modelName}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div ref={problemSuggestRef} style={{ position: 'relative' }}>
-                <FieldLabel>Problem Reported</FieldLabel>
-                <textarea ref={problemRef} style={{ ...inputStyle, resize: 'vertical', minHeight: 80 }} rows={3} value={problem} onChange={(e) => handleProblemChange(e.target.value)} placeholder="Describe the issue reported by the customer..." {...inputFocusStyle} />
-                {searchingProblems && <div className="spinner" style={{ position: 'absolute', right: 12, top: 38, width: 16, height: 16 }} />}
-                {showProblemSuggest && problemSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,.5)', maxHeight: 200, overflow: 'auto', marginTop: 4 }}>
-                    {problemSuggestions.map((p, i) => (
-                      <button key={i} type="button" onClick={() => { setProblem(p.problem); setShowProblemSuggest(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', textAlign: 'left' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--c-surface2)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
-                        <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-text3)' }}>history</span>
-                        <div><div>{p.problem}</div><div style={{ fontSize: 11, color: 'var(--c-text3)' }}>{p.device} — {p.brand} {p.model}</div></div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Customer Card */}
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-accent)' }}>person</span> Customer Information
-              </div>
-              <div ref={searchRef} style={{ position: 'relative', marginBottom: 16 }}>
-                <FieldLabel>Mobile Number</FieldLabel>
-                <div className="flex gap-2 items-center">
-                  <input ref={mobileRef} style={{ ...inputStyle, fontSize: 16, letterSpacing: '1px' }} value={mobile} onChange={(e) => handleMobileChange(e.target.value)} placeholder="Enter 10-digit mobile" maxLength={10} {...inputFocusStyle} />
-                  {searching && <div className="spinner" style={{ width: 18, height: 18, flexShrink: 0 }} />}
-                </div>
-                {showDropdown && searchResults.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,.5)', maxHeight: 200, overflow: 'auto', marginTop: 4 }}>
-                    {searchResults.map((c) => (
-                      <button key={c._id} type="button" onClick={() => selectCustomer(c)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', textAlign: 'left' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--c-surface2)'} onMouseLeave={(e) => e.currentTarget.style.background = 'none'}>
-                        <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-accent)' }}>person</span>
-                        <div><div style={{ fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: 11, color: 'var(--c-text3)' }}>{c.mobile}</div></div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: 'var(--c-text3)', marginTop: 4 }}>Existing customers auto-fill when found</div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div>
-                  <FieldLabel>Customer Name</FieldLabel>
-                  <input ref={nameRef} style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" {...inputFocusStyle} />
-                </div>
-                <div>
-                  <FieldLabel>Branch</FieldLabel>
-                  <input style={{ ...inputStyle, background: 'var(--c-surface2)', color: 'var(--c-text2)' }} value={branch} readOnly />
-                </div>
-              </div>
-              <div>
-                <FieldLabel hint="(optional)">Address</FieldLabel>
-                <input style={inputStyle} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Customer address" {...inputFocusStyle} />
-              </div>
-              {existingCustomer && (
-                <div style={{ marginTop: 12, background: 'rgba(6,182,212,.08)', border: '1px solid rgba(6,182,212,.2)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: 'var(--c-cyan)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="material-symbols-rounded" style={{ fontSize: 16 }}>info</span>
-                  Existing customer — details will update if changed
-                </div>
-              )}
-            </div>
+        <div style={s.card}>
+          <div style={s.sectionTitle}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-amber)' }}>warning</span> Device Condition
           </div>
-
-          {/* Right Column - Sidebar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 64 }}>
-            {/* Lead Source */}
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-accent)' }}>share</span> Lead Source <span style={{ fontWeight: 400, textTransform: 'none' }}>— press 1-5</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {LEAD_SOURCES.map((ls) => (
-                  <button key={ls.value} type="button" onClick={() => setLeadSource(ls.value)} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                    background: leadSource === ls.value ? 'rgba(205,0,99,.12)' : 'var(--c-surface2)',
-                    border: `1.5px solid ${leadSource === ls.value ? 'var(--c-accent)' : 'var(--c-border2)'}`,
-                    borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all .15s',
-                  }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: leadSource === ls.value ? 'var(--gradient-brand)' : 'var(--c-surface3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
-                      <span className="material-symbols-rounded" style={{ fontSize: 16, color: leadSource === ls.value ? '#fff' : 'var(--c-text3)' }}>{ls.icon}</span>
-                      <span style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: '50%', background: 'var(--c-accent)', fontSize: 8, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ls.key}</span>
-                    </div>
-                    <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 600, color: leadSource === ls.value ? 'var(--c-accent)' : 'var(--c-text)' }}>{ls.value}</div><div style={{ fontSize: 10, color: 'var(--c-text3)' }}>{ls.desc}</div></div>
-                    {leadSource === ls.value && <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-accent)' }}>check_circle</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Accessories */}
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-accent)' }}>inventory_2</span> Accessories
-              </div>
-              <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
-                {ACCESSORY_ITEMS.map(item => <Chip key={item} label={item} active={accessories.includes(item)} onClick={() => toggle(item, accessories, setAccessories)} />)}
-              </div>
-            </div>
-
-            {/* Condition */}
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-amber)' }}>warning</span> Condition
-              </div>
-              <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
-                {CONDITION_ITEMS.map(item => <Chip key={item} label={item} active={condition.includes(item)} onClick={() => toggle(item, condition, setCondition)} />)}
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-text3)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-accent)' }}>sell</span> Tags
-              </div>
-              <div className="flex gap-1" style={{ flexWrap: 'wrap', marginBottom: 8 }}>
-                {jobTags.map(tag => <Chip key={tag._id} label={tag.name} active={selectedTags.includes(tag.name)} onClick={() => toggle(tag.name, selectedTags, setSelectedTags)} />)}
-              </div>
-              <div className="flex gap-2">
-                <input style={{ ...inputStyle, padding: '8px 10px', fontSize: 12 }} value={newTagInput} onChange={(e) => setNewTagInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag(); } }} placeholder="New tag + Enter" />
-                <button type="button" className="btn btn-primary" onClick={handleCreateTag} disabled={!newTagInput.trim()} style={{ padding: '8px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>Add</button>
-              </div>
-            </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {CONDITION_ITEMS.map(item => <Chip key={item} label={item} active={condition.includes(item)} onClick={() => toggle(item, condition, setCondition)} />)}
           </div>
         </div>
+      </div>
 
-        {/* Bottom Submit Bar */}
-        <div style={{ marginTop: 24, padding: '16px 0', borderTop: '1px solid var(--c-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 12, color: 'var(--c-text3)' }}>
-            {canSubmit() ? <span style={{ color: 'var(--c-green)' }}>Ready to create</span> : <span>Fill all required fields to continue</span>}
-          </div>
-          <div className="flex gap-2">
-            <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)} style={{ padding: '10px 20px' }}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={!canSubmit() || saving} style={{ padding: '10px 28px', fontSize: 14, fontWeight: 600 }}>
-              {saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><span className="material-symbols-rounded" style={{ fontSize: 18 }}>add_task</span> Create Job</>}
-            </button>
-          </div>
+      {/* Tags */}
+      <div style={{ ...s.card, marginTop: 20 }}>
+        <div style={s.sectionTitle}>
+          <span className="material-symbols-rounded" style={{ fontSize: 18, color: 'var(--c-accent)' }}>sell</span> Tags
         </div>
-      </form>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          {jobTags.map(tag => <Chip key={tag._id} label={tag.name} active={selectedTags.includes(tag.name)} onClick={() => toggle(tag.name, selectedTags, setSelectedTags)} />)}
+        </div>
+        <div className="flex gap-3">
+          <input style={{ ...s.input, padding: '12px 14px' }} value={newTagInput} onChange={(e) => setNewTagInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag(); } }}
+            placeholder="Type tag name + Enter to create" onFocus={focusStyle} onBlur={blurStyle} />
+          <button type="button" className="btn btn-primary" onClick={handleCreateTag} disabled={!newTagInput.trim()} style={{ padding: '12px 20px', fontSize: 14, whiteSpace: 'nowrap' }}>Add Tag</button>
+        </div>
+      </div>
+
+      {/* Submit Bar */}
+      <div style={{ marginTop: 28, padding: '20px 0', borderTop: '1px solid var(--c-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 13, color: 'var(--c-text3)' }}>
+          {canSubmit()
+            ? <span style={{ color: 'var(--c-green)', fontWeight: 600 }}>✓ Ready to create — press Enter or click Create</span>
+            : <span>Fill device + problem + mobile to continue</span>}
+        </div>
+        <div className="flex gap-3">
+          <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)} style={{ padding: '12px 24px', fontSize: 14 }}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={!canSubmit() || saving} onClick={handleSubmit}
+            style={{ padding: '14px 36px', fontSize: 15, fontWeight: 600 }}>
+            {saving ? <span className="spinner" style={{ width: 18, height: 18 }} /> : <><span className="material-symbols-rounded" style={{ fontSize: 20 }}>add_task</span> Create Job</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
