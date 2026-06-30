@@ -14,7 +14,7 @@ const LEAD_SOURCES = [
   { value: 'Reference / Walk-in', icon: 'groups', desc: 'Referred', key: '5' },
 ];
 const ACCESSORY_ITEMS = ['Charger', 'Bag', 'Original Box', 'Cable', 'Mouse', 'Warranty Card', 'Bill', 'Stylus'];
-const CONDITION_ITEMS = ['Screen Scratches', 'Dents', 'Cracked Screen', 'Broken Hinge', 'Keyboard Missing Key', 'Body Scratches', 'Liquid Damage', 'Burning Smell'];
+const CONDITION_ITEMS = ['Screen Scratches', 'Dents', 'Cracked Screen', 'Broken Hinge', 'Keyboard Missing Key', 'Body Scratches', 'Liquid Damage', 'Burning Smell', 'Dead'];
 
 const s = {
   input: { width: '100%', padding: '14px 16px', background: 'var(--c-surface)', border: '1.5px solid var(--c-border2)', borderRadius: 12, color: 'var(--c-text)', fontSize: 15, fontFamily: 'inherit', outline: 'none', transition: 'border-color .15s, box-shadow .15s' },
@@ -65,6 +65,10 @@ export default function NewService() {
   const [condition, setCondition] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState('');
+  const [inWarranty, setInWarranty] = useState(false);
+  const [serialNo, setSerialNo] = useState('');
+  const [serviceCenterAddress, setServiceCenterAddress] = useState('');
+  const [docketDetail, setDocketDetail] = useState('');
   const [mobile, setMobile] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -184,7 +188,7 @@ export default function NewService() {
         try { await endpoints.saveDevice({ deviceType: finalDeviceType, brand: finalBrand, model: finalModel }); } catch {}
       }
 
-      const jobPayload = { device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, leadSource, accessories, condition, tags: selectedTags };
+      const jobPayload = { device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, leadSource, accessories, condition, tags: selectedTags, inWarranty, serialNo, serviceCenterAddress, docketDetail };
       if (existingCustomer) {
         const customerId = existingCustomer._id;
         if (name !== existingCustomer.name || address !== (existingCustomer.address || '')) {
@@ -422,6 +426,40 @@ export default function NewService() {
             {CONDITION_ITEMS.map(item => <Chip key={item} label={item} active={condition.includes(item)} onClick={() => toggle(item, condition, setCondition)} />)}
           </div>
         </div>
+      </div>
+
+      {/* Warranty Details */}
+      <div style={{ ...s.card, marginTop: 20 }}>
+        <div style={{ ...s.sectionTitle, marginBottom: 12 }}>
+          <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-accent)' }}>verified</span> Warranty Details
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: inWarranty ? 20 : 0 }}>
+          <input type="checkbox" checked={inWarranty} onChange={(e) => setInWarranty(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--c-accent)' }} />
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Device is In Warranty (RMA)</span>
+        </label>
+        
+        {inWarranty && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+            <div>
+              <label style={s.label}>Serial Number</label>
+              <input style={s.input} value={serialNo} onChange={(e) => setSerialNo(e.target.value)} placeholder="Enter S/N" onFocus={focusStyle} onBlur={blurStyle} />
+            </div>
+            <div>
+              <label style={s.label}>Service Center</label>
+              <select style={s.input} value={serviceCenterAddress} onChange={(e) => setServiceCenterAddress(e.target.value)} onFocus={focusStyle} onBlur={blurStyle}>
+                <option value="">Select Service Center...</option>
+                <option value="Local Authorized SC">Local Authorized SC</option>
+                <option value="Main City SC">Main City SC</option>
+                <option value="Direct to Manufacturer">Direct to Manufacturer</option>
+                <option value="Third-party Partner">Third-party Partner</option>
+              </select>
+            </div>
+            <div>
+              <label style={s.label}>Docket Details</label>
+              <input style={s.input} value={docketDetail} onChange={(e) => setDocketDetail(e.target.value)} placeholder="Tracking / Docket #" onFocus={focusStyle} onBlur={blurStyle} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tags */}

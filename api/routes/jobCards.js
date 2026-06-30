@@ -100,7 +100,11 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { _id: clientId, customerId, customerPhone: bodyPhone, device, brand, model, problem, branch, leadSource, accessories, condition, tags } = req.body;
+    const {
+        _id, customerId, customerPhone: bodyPhone, device, brand, model, problem, branch,
+        leadSource, accessories, condition, tags,
+        inWarranty, serialNo, serviceCenterAddress, docketDetail
+      } = req.body;
     if (!device) {
       return res.status(400).json({ message: 'device is required' });
     }
@@ -136,7 +140,7 @@ router.post('/', async (req, res) => {
     const trackingCode = nanoid(8);
 
     const doc = {
-      ...(clientId ? { _id: clientId } : {}),
+      ...(_id ? { _id: _id } : {}),
       jobId,
       trackingCode,
       customerId: finalCustomerId,
@@ -148,9 +152,13 @@ router.post('/', async (req, res) => {
       model: model || '',
       problem: problem || '',
       leadSource: leadSource || 'In Store Visit',
-      accessories: Array.isArray(accessories) ? accessories : [],
-      condition: Array.isArray(condition) ? condition : [],
-      tags: Array.isArray(tags) ? tags : [],
+      accessories: accessories || [],
+      condition: condition || [],
+      tags: tags || [],
+      inWarranty: !!inWarranty,
+      serialNo: serialNo || '',
+      serviceCenterAddress: serviceCenterAddress || '',
+      docketDetail: docketDetail || '',
       photos: [],
       pendingAssignmentSince: now,
       createdAt: now,

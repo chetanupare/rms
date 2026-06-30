@@ -34,7 +34,20 @@ export default function AppShell() {
   const [dbStatus, setDbStatus] = useState(true);
   const [serverStatus, setServerStatus] = useState(true);
   const [searchVal, setSearchVal] = useState('');
+  const [theme, setTheme] = useState(() => localStorage.getItem('rms_theme') || 'dark');
   const branchRef = useRef(null);
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('rms_theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  }
+
+  // Apply theme on mount
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, []);
 
   useEffect(() => {
     function handleClick(e) {
@@ -142,6 +155,15 @@ export default function AppShell() {
               <span className={`status-dot${(window.electronAPI?.isElectron ? serverStatus : isOnline) ? ' online' : ''}`} title={(window.electronAPI?.isElectron ? serverStatus : isOnline) ? 'Server Online' : 'Server Offline'}>
                 <span className="material-symbols-rounded" style={{ fontSize: 14 }}>{(window.electronAPI?.isElectron ? serverStatus : isOnline) ? 'wifi' : 'wifi_off'}</span>
               </span>
+              <button
+                className="hbtn"
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                <span className="material-symbols-rounded">
+                  {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+                </span>
+              </button>
               <button
                 className={`hbtn${permission === 'granted' ? ' notif-on' : ''}`}
                 onClick={requestPermission}

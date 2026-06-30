@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -11,6 +11,18 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('rms_theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('rms_theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  }
 
   if (user) return <Navigate to="/dashboard" replace />;
 
@@ -64,6 +76,9 @@ export default function Login() {
         </div>
         <div className="login-footer">
           <a href="#"><span>Sai Laptop & Computer Gallery</span> — Wani, MH</a>
+          <button onClick={toggleTheme} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text3)', marginLeft: 8, display: 'flex', alignItems: 'center' }} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18 }}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+          </button>
         </div>
       </div>
     </div>

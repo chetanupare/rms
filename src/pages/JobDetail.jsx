@@ -268,6 +268,20 @@ export default function JobDetail() {
               <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-accent)', marginRight: 12 }}>description</span>
               <div className="t-xs dim">Problem</div><div className="t-sm" style={{ background: 'var(--c-surface2)', padding: '6px 8px', borderRadius: 6, marginTop: 2 }}>{job.problem || '—'}</div>
             </div>
+            
+            {job.inWarranty && (
+              <div style={{ marginTop: 12, padding: '12px', background: 'rgba(16,185,129,.05)', border: '1px solid rgba(16,185,129,.2)', borderRadius: 8 }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-rounded" style={{ fontSize: 16, color: 'var(--c-green)' }}>verified</span>
+                  <span className="t-sm fw-700" style={{ color: 'var(--c-green)' }}>In Warranty (RMA)</span>
+                </div>
+                <div className="grid-2" style={{ gap: 8 }}>
+                  <div><span className="dim t-xs">Serial Number</span><div className="t-sm fw-600">{job.serialNo || '—'}</div></div>
+                  <div><span className="dim t-xs">Service Center</span><div className="t-sm">{job.serviceCenterAddress || '—'}</div></div>
+                  <div style={{ gridColumn: '1/-1' }}><span className="dim t-xs">Docket Details</span><div className="t-sm">{job.docketDetail || '—'}</div></div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -528,7 +542,12 @@ export default function JobDetail() {
               <label className="form-label">Exact Sub-Status (Optional)</label>
               <select className="form-input" value={selectedSubStatus} onChange={(e) => setSelectedSubStatus(e.target.value)}>
                 <option value="">-- None --</option>
-                {SUB_STATUS_MAP[selectedMainStatus].map(st => (
+                {SUB_STATUS_MAP[selectedMainStatus]
+                  .filter(st => {
+                    if (data.leadSource === 'In Store Visit' && (st === 'waiting_for_device' || st === 'en_route')) return false;
+                    return true;
+                  })
+                  .map(st => (
                   <option key={st} value={st}>{formatStatusName(st)}</option>
                 ))}
               </select>
