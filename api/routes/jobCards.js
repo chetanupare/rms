@@ -60,7 +60,27 @@ router.get('/:id', async (req, res) => {
     const bill = await req.db.collection('billing').findOne({ jobId: job.jobId });
     const activity = await req.db.collection('activity_logs').find({ jobId: job.jobId }).sort({ createdAt: -1 }).limit(20).toArray();
 
-    res.json({ ...job, customer, repair, bill, activity });
+    let technician = null;
+    if (job.technicianId) {
+      const techUser = await req.db.collection('users').findOne(
+        { _id: toId(job.technicianId) },
+        { projection: { password: 0 } }
+      );
+      const techStatus = await req.db.collection('technician_status').findOne({ userId: job.technicianId });
+      const offer = await req.db.collection('job_offers').findOne({ jobId: job.jobId, technicianId: job.technicianId });
+      if (techUser) {
+        technician = {
+          _id: techUser._id.toString(),
+          name: techUser.name || techUser.username,
+          phone: techUser.phone || '',
+          status: techStatus?.status || 'off_duty',
+          offerStatus: offer?.status || null,
+          assignedAt: job.assignedAt || offer?.createdAt || null,
+        };
+      }
+    }
+
+    res.json({ ...job, customer, repair, bill, activity, technician });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

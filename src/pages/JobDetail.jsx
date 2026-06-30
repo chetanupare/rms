@@ -149,6 +149,43 @@ export default function JobDetail() {
         </div>
       </div>
 
+      {job.technician && (
+        <div className="card" style={{
+          marginBottom: 16, padding: '14px 18px',
+          background: job.technician.status === 'on_duty' ? 'rgba(16,185,129,.06)' : 'var(--c-surface)',
+          border: `1px solid ${job.technician.status === 'on_duty' ? 'rgba(16,185,129,.25)' : 'var(--c-border)'}`,
+        }}>
+          <div className="flex items-center gap-4">
+            <div style={{
+              width: 42, height: 42, borderRadius: 10,
+              background: job.technician.status === 'on_duty' ? 'var(--c-green)' : 'var(--c-surface3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 22, color: '#fff' }}>person</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="flex items-center gap-2">
+                <span className="t-base fw-700">{job.technician.name}</span>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 600,
+                  background: job.technician.status === 'on_duty' ? 'rgba(16,185,129,.15)' : 'rgba(139,146,168,.15)',
+                  color: job.technician.status === 'on_duty' ? 'var(--c-green)' : 'var(--c-text3)',
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: job.technician.status === 'on_duty' ? 'var(--c-green)' : 'var(--c-text3)' }} />
+                  {job.technician.status === 'on_duty' ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <div className="t-xs dim" style={{ marginTop: 2 }}>
+                {job.technician.phone && <span>{job.technician.phone}</span>}
+                {job.technician.offerStatus && <span> · <span className="badge" style={{ fontSize: 9 }}>{job.technician.offerStatus}</span></span>}
+                {job.technician.assignedAt && <span> · Assigned {formatDate(job.technician.assignedAt)}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid-2" style={{ gap: 12 }}>
         <div className="card">
           <div className="t-sm fw-700 mb-2" style={{ textTransform: 'uppercase', fontSize: 10, letterSpacing: '.07em', color: 'var(--c-text3)' }}>Device</div>
