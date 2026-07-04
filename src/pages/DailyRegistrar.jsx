@@ -5,7 +5,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 
 const CATEGORIES_IN = ['Repair Payment', 'Part Sale', 'Advance', 'Credit Received', 'Other Income'];
-const CATEGORIES_OUT = ['Part Purchase', 'Expense', 'Petty Cash', 'Salary', 'Rent', 'Credit Given', 'Other Expense'];
+const CATEGORIES_OUT = ['Part Purchase', 'Food/Drink', 'Transport', 'Salary', 'Rent', 'Utilities', 'Credit Given', 'Other Expense'];
 const PAYMENT_MODES = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Credit'];
 
 const QUICK_IN = [
@@ -17,11 +17,14 @@ const QUICK_IN = [
 ];
 
 const QUICK_OUT = [
-  { label: '₹20', category: 'Petty Cash', amount: 20 },
-  { label: '₹50', category: 'Petty Cash', amount: 50 },
-  { label: '₹100', category: 'Expense', amount: 100 },
+  { label: 'Tea ₹20', category: 'Food/Drink', amount: 20 },
+  { label: 'Wadapao ₹30', category: 'Food/Drink', amount: 30 },
+  { label: 'Lunch ₹80', category: 'Food/Drink', amount: 80 },
+  { label: 'Auto ₹100', category: 'Transport', amount: 100 },
   { label: 'Part', category: 'Part Purchase', amount: 0 },
 ];
+
+const NO_CUSTOMER_CATEGORIES = ['Food/Drink', 'Transport', 'Utilities'];
 
 export default function DailyRegistrar() {
   const { addToast } = useToast();
@@ -156,10 +159,17 @@ export default function DailyRegistrar() {
       let customerName = form.customerName;
       let customerMobile = form.customerMobile;
       
-      // Only create/search customer for IN entries or OUT entries with customer name
-      const skipCustomerCreation = form.type === 'out' && ['Petty Cash', 'Expense'].includes(form.category) && !form.customerName;
+      // Skip customer creation for food/transport/utilities categories
+      const skipCustomer = form.type === 'out' && NO_CUSTOMER_CATEGORIES.includes(form.category);
       
-      if (customerName && !selectedCustomer && !skipCustomerCreation) {
+      if (skipCustomer) {
+        // Move customer name to description if it's a food/transport item
+        if (customerName && !form.description) {
+          form.description = customerName;
+        }
+        customerName = '';
+        customerMobile = '';
+      } else if (customerName && !selectedCustomer) {
         try {
           const { data: existing } = await endpoints.searchCustomers(customerName);
           const match = existing?.find(c => c.name.toLowerCase() === customerName.toLowerCase());
@@ -169,15 +179,6 @@ export default function DailyRegistrar() {
             customerMobile = newCust.mobile || customerMobile; 
           }
         } catch { }
-      }
-      
-      // Clear customer name for petty cash/expense if it looks like a description
-      if (form.type === 'out' && ['Petty Cash', 'Expense'].includes(form.category)) {
-        const desc = form.description || form.customerName;
-        if (desc && !form.customerName.match(/^[A-Z][a-z]+ [A-Z]/)) {
-          customerName = '';
-          customerMobile = '';
-        }
       }
       
       const payload = { ...form, amount: Number(form.amount), quantity: form.quantity ? Number(form.quantity) : undefined, customerName, customerMobile };
@@ -372,20 +373,29 @@ export default function DailyRegistrar() {
             </div>
           </div>
 
-          <div className="form-group" style={{ position: 'relative' }}>
-            <label className="form-label">{form.type === 'in' ? 'Customer' : (form.category === 'Petty Cash' || form.category === 'Expense') ? 'Paid For' : 'Paid To'}</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input ref={customerRef} className="form-input" value={form.customerName} onChange={(e) => handleCustomerSearch(e.target.value)} onFocus={() => customerSuggestions.length > 0 && setShowCustomerSuggest(true)} onBlur={() => setTimeout(() => setShowCustomerSuggest(false), 200)} placeholder={(form.type === 'out' && ['Petty Cash', 'Expense'].includes(form.category)) ? 'e.g. Tea, Wadapao, Auto...' : 'Search or type...'} style={{ flex: 1 }} />
-              {form.type === 'in' && <input className="form-input" value={form.customerMobile} onChange={(e) => setForm({ ...form, customerMobile: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} placeholder="Mobile" maxLength={10} style={{ width: 110, fontSize: 12 }} />}
-            </div>
-            {showCustomerSuggest && customerSuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.4)', maxHeight: 160, overflow: 'auto', marginTop: 4 }}>
-                {customerSuggestions.map(c => <button key={c._id} type="button" onMouseDown={(e) => { e.preventDefault(); selectCustomer(c); }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 12, textAlign: 'left', fontFamily: 'inherit' }}><div style={{ fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: 10, color: 'var(--c-text3)' }}>{c.mobile}</div></button>)}
+          {!NO_CUSTOMER_CATEGORIES.includes(form.category) && (
+            <div className="form-group" style={{ position: 'relative' }}>
+              <label className="form-label">{form.type === 'in' ? 'Customer' : 'Paid To'}</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input ref={customerRef} className="form-input" value={form.customerName} onChange={(e) => handleCustomerSearch(e.target.value)} onFocus={() => customerSuggestions.length > 0 && setShowCustomerSuggest(true)} onBlur={() => setTimeout(() => setShowCustomerSuggest(false), 200)} placeholder="Search or type..." style={{ flex: 1 }} />
+                {form.type === 'in' && <input className="form-input" value={form.customerMobile} onChange={(e) => setForm({ ...form, customerMobile: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} placeholder="Mobile" maxLength={10} style={{ width: 110, fontSize: 12 }} />}
               </div>
-            )}
-            {selectedCustomer && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-green)' }}>✓ {selectedCustomer.name}</div>}
-            {!selectedCustomer && form.customerName.length >= 2 && !showCustomerSuggest && form.type === 'in' && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-amber)' }}>+ New: "{form.customerName}"</div>}
-          </div>
+              {showCustomerSuggest && customerSuggestions.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.4)', maxHeight: 160, overflow: 'auto', marginTop: 4 }}>
+                  {customerSuggestions.map(c => <button key={c._id} type="button" onMouseDown={(e) => { e.preventDefault(); selectCustomer(c); }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 12, textAlign: 'left', fontFamily: 'inherit' }}><div style={{ fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: 10, color: 'var(--c-text3)' }}>{c.mobile}</div></button>)}
+                </div>
+              )}
+              {selectedCustomer && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-green)' }}>✓ {selectedCustomer.name}</div>}
+              {!selectedCustomer && form.customerName.length >= 2 && !showCustomerSuggest && form.type === 'in' && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-amber)' }}>+ New: "{form.customerName}"</div>}
+            </div>
+          )}
+
+          {NO_CUSTOMER_CATEGORIES.includes(form.category) && (
+            <div className="form-group">
+              <label className="form-label">Title</label>
+              <input className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="e.g. Tea, Wadapao, Auto fare..." />
+            </div>
+          )}
 
           {(form.category === 'Part Sale' || form.category === 'Part Purchase' || form.productName) && (
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
@@ -402,7 +412,9 @@ export default function DailyRegistrar() {
             </div>
           )}
 
-          <div className="form-group"><label className="form-label">Note</label><input ref={descRef} className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description..." /></div>
+          {!NO_CUSTOMER_CATEGORIES.includes(form.category) && (
+            <div className="form-group"><label className="form-label">Note</label><input ref={descRef} className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description..." /></div>
+          )}
 
           <div className="form-group"><label className="form-label">Payment</label>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
