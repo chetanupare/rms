@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ObjectId } from 'mongodb';
 import { authenticate, adminOnly } from '../middleware/auth.js';
 import { logger } from '../logger.js';
+import { sendRegisterEmail } from '../utils/email.js';
 
 const router = Router();
 router.use(authenticate);
@@ -38,7 +39,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { type, category, amount, description, paymentMode } = req.body;
+    const { type, category, amount, description, paymentMode, customerName, customerMobile, productName, quantity, isReturn } = req.body;
     if (!type || !amount) return res.status(400).json({ message: 'type and amount are required' });
 
     const today = new Date().toISOString().slice(0, 10);
@@ -49,6 +50,11 @@ router.post('/', async (req, res) => {
       amount: Number(amount),
       description: description || '',
       paymentMode: paymentMode || 'Cash',
+      customerName: customerName || '',
+      customerMobile: customerMobile || '',
+      productName: productName || '',
+      quantity: quantity ? Number(quantity) : 0,
+      isReturn: !!isReturn,
       createdBy: req.user?.username || 'system',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -71,13 +77,18 @@ router.put('/:id', async (req, res) => {
     const today = new Date().toISOString().slice(0, 10);
     if (entry.date !== today) return res.status(400).json({ message: 'Can only edit today\'s entries' });
 
-    const { type, category, amount, description, paymentMode } = req.body;
+    const { type, category, amount, description, paymentMode, customerName, customerMobile, productName, quantity, isReturn } = req.body;
     const update = { updatedAt: new Date() };
     if (type) update.type = type;
     if (category) update.category = category;
     if (amount) update.amount = Number(amount);
     if (description !== undefined) update.description = description;
     if (paymentMode) update.paymentMode = paymentMode;
+    if (customerName !== undefined) update.customerName = customerName;
+    if (customerMobile !== undefined) update.customerMobile = customerMobile;
+    if (productName !== undefined) update.productName = productName;
+    if (quantity !== undefined) update.quantity = quantity ? Number(quantity) : 0;
+    if (isReturn !== undefined) update.isReturn = !!isReturn;
 
     await req.db.collection('register_entries').updateOne(
       { _id: new ObjectId(req.params.id) },
@@ -114,16 +125,26 @@ router.post('/finalize', async (req, res) => {
     const totalIn = entries.filter((e) => e.type === 'in').reduce((s, e) => s + e.amount, 0);
     const totalOut = entries.filter((e) => e.type === 'out').reduce((s, e) => s + e.amount, 0);
 
+    // Get opening balance
+    const yesterday = new Date(new Date(today + 'T00:00:00').getTime() - 86400000).toISOString().slice(0, 10);
+    const yestEntries = await req.db.collection('register_entries').find({ date: yesterday }).toArray();
+    const openingBalance = yestEntries.reduce((s, e) => s + (e.type === 'in' ? e.amount : -e.amount), 0);
+
     await req.db.collection('register_entries').updateMany(
       { date: today },
       { $set: { finalized: true } }
     );
 
-    const summary = `Daily Register Summary - ${today}\n\nTotal In: ₹${totalIn}\nTotal Out: ₹${totalOut}\nBalance: ₹${totalIn - totalOut}\n\nEntries:\n${entries.map((e) => `[${e.type.toUpperCase()}] ${e.category}: ₹${e.amount} - ${e.description || ''} (${e.paymentMode})`).join('\n')}`;
+    const summary = `Daily Register Summary - ${today}\n\nOpening: ₹${openingBalance}\nTotal In: ₹${totalIn}\nTotal Out: ₹${totalOut}\nBalance: ₹${openingBalance + totalIn - totalOut}\n\nEntries:\n${entries.map((e) => `[${e.type.toUpperCase()}] ${e.category}: ₹${e.amount} - ${e.description || ''} (${e.paymentMode})`).join('\n')}`;
 
     logger.info(`Register finalized for ${today}\n${summary}`);
 
-    res.json({ message: 'Day finalized successfully', summary, totalIn, totalOut, balance: totalIn - totalOut });
+    // Send email
+    const emailSent = await sendRegisterEmail(today, entries, totalIn, totalOut, totalIn - totalOut, openingBalance);
+    if (emailSent) logger.info('Register email sent successfully');
+    else logger.warn('Failed to send register email');
+
+    res.json({ message: 'Day finalized successfully', summary, totalIn, totalOut, balance: totalIn - totalOut, emailSent });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
