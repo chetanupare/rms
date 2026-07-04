@@ -41,10 +41,14 @@ export default function DailyRegistrar() {
   const [customerSuggestions, setCustomerSuggestions] = useState([]);
   const [showCustomerSuggest, setShowCustomerSuggest] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [productSuggestions, setProductSuggestions] = useState([]);
+  const [showProductSuggest, setShowProductSuggest] = useState(false);
   const amountRef = useRef(null);
   const customerRef = useRef(null);
+  const productRef = useRef(null);
   const descRef = useRef(null);
   const customerTimerRef = useRef(null);
+  const productTimerRef = useRef(null);
 
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -118,6 +122,24 @@ export default function DailyRegistrar() {
     descRef.current?.focus();
   }
 
+  function handleProductSearch(val) {
+    setForm({ ...form, productName: val });
+    if (productTimerRef.current) clearTimeout(productTimerRef.current);
+    if (val.length >= 2) {
+      productTimerRef.current = setTimeout(async () => {
+        try { const { data } = await endpoints.searchProblems(val); setProductSuggestions(data || []); setShowProductSuggest((data || []).length > 0); }
+        catch { setProductSuggestions([]); setShowProductSuggest(false); }
+      }, 300);
+    } else { setProductSuggestions([]); setShowProductSuggest(false); }
+  }
+
+  function selectProduct(p) {
+    setForm({ ...form, productName: p.problem || p.name || p });
+    setShowProductSuggest(false);
+    setProductSuggestions([]);
+    descRef.current?.focus();
+  }
+
   function handleFormKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -133,14 +155,31 @@ export default function DailyRegistrar() {
     try {
       let customerName = form.customerName;
       let customerMobile = form.customerMobile;
-      if (customerName && !selectedCustomer) {
+      
+      // Only create/search customer for IN entries or OUT entries with customer name
+      const skipCustomerCreation = form.type === 'out' && ['Petty Cash', 'Expense'].includes(form.category) && !form.customerName;
+      
+      if (customerName && !selectedCustomer && !skipCustomerCreation) {
         try {
           const { data: existing } = await endpoints.searchCustomers(customerName);
           const match = existing?.find(c => c.name.toLowerCase() === customerName.toLowerCase());
           if (match) { customerName = match.name; customerMobile = match.mobile; }
-          else if (customerName.length >= 2) { const { data: newCust } = await endpoints.createCustomer({ name: customerName, mobile: customerMobile || '' }); customerMobile = newCust.mobile || customerMobile; }
+          else if (customerName.length >= 2 && form.type === 'in') { 
+            const { data: newCust } = await endpoints.createCustomer({ name: customerName, mobile: customerMobile || '' }); 
+            customerMobile = newCust.mobile || customerMobile; 
+          }
         } catch { }
       }
+      
+      // Clear customer name for petty cash/expense if it looks like a description
+      if (form.type === 'out' && ['Petty Cash', 'Expense'].includes(form.category)) {
+        const desc = form.description || form.customerName;
+        if (desc && !form.customerName.match(/^[A-Z][a-z]+ [A-Z]/)) {
+          customerName = '';
+          customerMobile = '';
+        }
+      }
+      
       const payload = { ...form, amount: Number(form.amount), quantity: form.quantity ? Number(form.quantity) : undefined, customerName, customerMobile };
       if (editingEntry) { await endpoints.updateRegisterEntry(editingEntry._id, payload); addToast('Updated', 'success'); }
       else { await endpoints.createRegisterEntry(payload); addToast('Added', 'success'); }
@@ -162,6 +201,41 @@ export default function DailyRegistrar() {
     if (!confirm('Reopen today? This will allow editing entries again.')) return;
     try { await endpoints.reopenRegister(); addToast('Reopened for editing', 'success'); load(); }
     catch (err) { addToast(err.response?.data?.message || 'Failed', 'error'); }
+  }
+
+  function handlePrint() {
+    const dateStr = new Date(targetDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const inEntries = entries.filter(e => e.type === 'in');
+    const outEntries = entries.filter(e => e.type === 'out');
+    
+    const html = `<!DOCTYPE html><html><head><title>Register ${targetDate}</title><style>
+      @page{size:A4;margin:10mm}body{font-family:system-ui,sans-serif;color:#1a1a2e;font-size:11px;line-height:1.5}
+      .head{background:linear-gradient(135deg,#0f0c29,#302b63);color:#fff;padding:16px 20px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center}
+      .head h1{font-size:16px;font-weight:700}.head .date{font-size:12px;opacity:.8}
+      .summary{display:flex;gap:12px;padding:14px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+      .summary .item{flex:1;text-align:center}.summary .label{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:700}.summary .value{font-size:18px;font-weight:700;margin-top:4px}
+      .in{color:#059669}.out{color:#dc2626}.balance{color:#1a1a2e}
+      .section{padding:10px 20px}.section-title{font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+      .dot{width:8px;height:8px;border-radius:50%}.dot-green{background:#059669}.dot-red{background:#dc2626}
+      table{width:100%;border-collapse:collapse;font-size:10px}th{padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:#94a3b8;border-bottom:2px solid #e2e8f0;font-weight:700}
+      td{padding:5px 8px;border-bottom:1px solid #f1f5f9}.amt-in{color:#059669;font-weight:700}.amt-out{color:#dc2626;font-weight:700}
+      .badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:8px;font-weight:600}.badge-cash{background:#dbeafe;color:#1d4ed8}.badge-upi{background:#fce7f3;color:#be185d}
+      .footer{padding:10px 20px;text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:10px}
+    </style></head><body>
+      <div class="head"><div><h1>Sai Laptop & Computer Gallery</h1><div style="font-size:9px;opacity:.7">Daily Register Report</div></div><div class="date">${dateStr}</div></div>
+      <div class="summary">
+        <div class="item"><div class="label">Opening</div><div class="value">₹${openingBalance.toLocaleString('en-IN')}</div></div>
+        <div class="item"><div class="label">Income</div><div class="value in">+₹${totalIn.toLocaleString('en-IN')}</div></div>
+        <div class="item"><div class="label">Expense</div><div class="value out">-₹${totalOut.toLocaleString('en-IN')}</div></div>
+        <div class="item"><div class="label">Closing</div><div class="value balance">₹${closingBalance.toLocaleString('en-IN')}</div></div>
+      </div>
+      ${inEntries.length > 0 ? `<div class="section"><div class="section-title"><div class="dot dot-green"></div>Income (${inEntries.length})</div><table><thead><tr><th>Category</th><th>Customer</th><th>Product</th><th>Note</th><th>Mode</th><th style="text-align:right">Amount</th></tr></thead><tbody>${inEntries.map(e => `<tr><td style="font-weight:600">${e.category}</td><td>${e.customerName || '—'}</td><td>${e.productName || '—'}${e.quantity > 1 ? ' ×' + e.quantity : ''}</td><td style="color:#64748b">${e.description || '—'}</td><td><span class="badge badge-${(e.paymentMode || 'cash').toLowerCase()}">${e.paymentMode}</span></td><td class="amt-in" style="text-align:right">+₹${e.amount.toLocaleString('en-IN')}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${outEntries.length > 0 ? `<div class="section"><div class="section-title"><div class="dot dot-red"></div>Expenses (${outEntries.length})</div><table><thead><tr><th>Category</th><th>Paid For/To</th><th>Note</th><th>Mode</th><th style="text-align:right">Amount</th></tr></thead><tbody>${outEntries.map(e => `<tr><td style="font-weight:600">${e.category}${e.isReturn ? ' <span style="color:#d97706">(Return)</span>' : ''}</td><td>${e.customerName || '—'}</td><td style="color:#64748b">${e.description || '—'}</td><td><span class="badge badge-${(e.paymentMode || 'cash').toLowerCase()}">${e.paymentMode}</span></td><td class="amt-out" style="text-align:right">-₹${e.amount.toLocaleString('en-IN')}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <div class="footer">Sai Laptop & Computer Gallery · Virani Complex, Wani, Yavatmal · +91-9823687568<br>Generated ${new Date().toLocaleString('en-IN')}</div>
+    </body></html>`;
+    
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 400); }
   }
 
   const totalIn = data?.totalIn || 0;
@@ -227,11 +301,16 @@ export default function DailyRegistrar() {
 
   return (
     <div style={{ animation: 'pageIn .2s ease', display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, alignItems: 'center' }}>
         {[['today', 'Today'], ['yesterday', 'Yesterday'], ['history', 'History']].map(([key, label]) => (
           <button key={key} className={`btn ${tab === key ? 'btn-primary' : 'btn-ghost'}`} onClick={() => { setTab(key); setEditingEntry(null); setViewDay(null); }} style={{ fontSize: 10, padding: '4px 10px' }}>{label}</button>
         ))}
-        {isFinalized && <span className="badge badge-cyan" style={{ marginLeft: 'auto', fontSize: 9 }}>Finalized</span>}
+        {entries.length > 0 && (
+          <button onClick={handlePrint} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--c-border)', background: 'transparent', color: 'var(--c-text2)', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', marginLeft: 'auto' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 14 }}>print</span> Print
+          </button>
+        )}
+        {isFinalized && <span className="badge badge-cyan" style={{ fontSize: 9 }}>Finalized</span>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
@@ -294,9 +373,9 @@ export default function DailyRegistrar() {
           </div>
 
           <div className="form-group" style={{ position: 'relative' }}>
-            <label className="form-label">{form.type === 'in' ? 'Customer' : 'Paid To'}</label>
+            <label className="form-label">{form.type === 'in' ? 'Customer' : (form.category === 'Petty Cash' || form.category === 'Expense') ? 'Paid For' : 'Paid To'}</label>
             <div style={{ display: 'flex', gap: 6 }}>
-              <input ref={customerRef} className="form-input" value={form.customerName} onChange={(e) => handleCustomerSearch(e.target.value)} onFocus={() => customerSuggestions.length > 0 && setShowCustomerSuggest(true)} onBlur={() => setTimeout(() => setShowCustomerSuggest(false), 200)} placeholder="Search or type..." style={{ flex: 1 }} />
+              <input ref={customerRef} className="form-input" value={form.customerName} onChange={(e) => handleCustomerSearch(e.target.value)} onFocus={() => customerSuggestions.length > 0 && setShowCustomerSuggest(true)} onBlur={() => setTimeout(() => setShowCustomerSuggest(false), 200)} placeholder={(form.type === 'out' && ['Petty Cash', 'Expense'].includes(form.category)) ? 'e.g. Tea, Wadapao, Auto...' : 'Search or type...'} style={{ flex: 1 }} />
               {form.type === 'in' && <input className="form-input" value={form.customerMobile} onChange={(e) => setForm({ ...form, customerMobile: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} placeholder="Mobile" maxLength={10} style={{ width: 110, fontSize: 12 }} />}
             </div>
             {showCustomerSuggest && customerSuggestions.length > 0 && (
@@ -305,12 +384,20 @@ export default function DailyRegistrar() {
               </div>
             )}
             {selectedCustomer && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-green)' }}>✓ {selectedCustomer.name}</div>}
-            {!selectedCustomer && form.customerName.length >= 2 && !showCustomerSuggest && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-amber)' }}>+ New: "{form.customerName}"</div>}
+            {!selectedCustomer && form.customerName.length >= 2 && !showCustomerSuggest && form.type === 'in' && <div style={{ marginTop: 4, fontSize: 10, color: 'var(--c-amber)' }}>+ New: "{form.customerName}"</div>}
           </div>
 
           {(form.category === 'Part Sale' || form.category === 'Part Purchase' || form.productName) && (
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
-              <div className="form-group"><label className="form-label">Product</label><input className="form-input" value={form.productName} onChange={(e) => setForm({ ...form, productName: e.target.value })} placeholder="Product name..." /></div>
+              <div className="form-group" style={{ position: 'relative' }}>
+                <label className="form-label">Product</label>
+                <input ref={productRef} className="form-input" value={form.productName} onChange={(e) => handleProductSearch(e.target.value)} onFocus={() => productSuggestions.length > 0 && setShowProductSuggest(true)} onBlur={() => setTimeout(() => setShowProductSuggest(false), 200)} placeholder="Search product..." />
+                {showProductSuggest && productSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--c-surface3)', border: '1px solid var(--c-border2)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.4)', maxHeight: 160, overflow: 'auto', marginTop: 4 }}>
+                    {productSuggestions.map((p, i) => <button key={i} type="button" onMouseDown={(e) => { e.preventDefault(); selectProduct(p); }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text)', cursor: 'pointer', fontSize: 12, textAlign: 'left', fontFamily: 'inherit' }}>{p.problem || p.name || p}</button>)}
+                  </div>
+                )}
+              </div>
               <div className="form-group"><label className="form-label">Qty</label><input type="number" className="form-input" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="1" min="1" /></div>
             </div>
           )}
