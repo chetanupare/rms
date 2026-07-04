@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
+import { api, endpoints } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 import { useBranch } from '../../context/BranchContext';
@@ -56,6 +56,32 @@ export default function AppShell() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  const lastJobRef = useRef(null);
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await endpoints.jobCards({ limit: 1 });
+        if (data && data.length > 0) {
+          const latestJob = data[0];
+          if (!lastJobRef.current) {
+            lastJobRef.current = latestJob.jobId;
+          } else if (lastJobRef.current !== latestJob.jobId) {
+            const isRecent = new Date(latestJob.createdAt).getTime() > Date.now() - 60000;
+            if (isRecent && Notification.permission === 'granted') {
+              new Notification('New Service Job Created', {
+                body: `Job ${latestJob.jobId} created for ${latestJob.device} (${latestJob.brand || ''}).\nProblem: ${latestJob.problem || ''}`,
+                icon: '/logo.png'
+              });
+            }
+            lastJobRef.current = latestJob.jobId;
+          }
+        }
+      } catch (err) {}
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (window.electronAPI?.isElectron) {

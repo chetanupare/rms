@@ -10,12 +10,15 @@ router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
-    const { branch } = req.query;
+    const { branch, limit } = req.query;
     const branchFilter = branch ? { branch: { $regex: `^${branch}$`, $options: 'i' } } : {};
-    const jobs = await req.db.collection('job_cards')
+    let cursor = req.db.collection('job_cards')
       .find(branchFilter)
-      .sort({ createdAt: -1 })
-      .toArray();
+      .sort({ createdAt: -1 });
+    if (limit) {
+      cursor = cursor.limit(parseInt(limit, 10));
+    }
+    const jobs = await cursor.toArray();
 
     const phoneNumbers = jobs.map((j) => j.customerPhone).filter(Boolean);
     const customerIds = jobs.filter((j) => !j.customerPhone && j.customerId).map((j) => j.customerId);

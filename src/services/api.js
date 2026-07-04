@@ -33,7 +33,7 @@ export const endpoints = {
   updateCustomer: (id, payload) => api.put(`/customers/${id}`, payload),
   deleteCustomer: (id) => api.delete(`/customers/${id}`),
 
-  jobCards: () => api.get('/job-cards', { params: withBranch() }),
+  jobCards: (params = {}) => api.get('/job-cards', { params: withBranch(params) }),
   jobCardById: (id) => api.get(`/job-cards/${id}`),
   createJobCard: (payload) => api.post('/job-cards', payload),
   updateJobCard: (id, payload) => api.put(`/job-cards/${id}`, payload),
