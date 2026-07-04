@@ -59,7 +59,7 @@ export default function ServiceCenters() {
     setBrandIsOther(!isBrandKnown);
     setDeviceIsOther(!isDeviceKnown);
     setCustomBrand(isBrandKnown ? '' : c.brand);
-    setCustomDevice(isKnown ? '' : c.deviceType);
+    setCustomDevice(isDeviceKnown ? '' : c.deviceType);
     setForm({ brand: c.brand, deviceType: c.deviceType, location: c.location || '', city: c.city || '', contact: c.contact || '' });
     setModalOpen(true);
   }

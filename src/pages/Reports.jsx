@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { endpoints } from '../services/api';
+import { api, endpoints } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useBranch } from '../context/BranchContext';
 import { formatCurrency, statusBadgeClass } from '../utils/helpers';
@@ -22,7 +22,8 @@ export default function Reports() {
   function exportCSV() {
     const params = new URLSearchParams({ type: reportType, format: 'csv' });
     if (branch) params.set('branch', branch);
-    window.open(`/api/reports?${params.toString()}`, '_blank');
+    const baseUrl = api.defaults.baseURL.replace('/api', '');
+    window.open(`${baseUrl}/api/reports?${params.toString()}`, '_blank');
   }
 
   if (loading) return <LoadingSpinner text="Loading reports..." />;

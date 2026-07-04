@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { endpoints } from '../services/api';
+import { api, endpoints } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useBranch } from '../context/BranchContext';
 import { formatDate, formatCurrency, statusBadgeClass } from '../utils/helpers';
