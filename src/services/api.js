@@ -7,6 +7,14 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+export function getTrackingUrl(trackingCodeOrJobId) {
+  return `${API_BASE}/track/${trackingCodeOrJobId}`;
+}
+
+export function getBaseUrl() {
+  return API_BASE;
+}
+
 let logoutHandler = null;
 
 export function setLogoutHandler(fn) {

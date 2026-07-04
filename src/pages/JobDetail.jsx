@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { endpoints, api, assetUrl } from '../services/api';
+import { endpoints, api, assetUrl, getTrackingUrl } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatDateTime, formatCurrency, statusBadgeClass, openWhatsApp } from '../utils/helpers';
@@ -72,7 +72,7 @@ export default function JobDetail() {
       try { JsBarcode('#detail-barcode', data.jobId, { format: 'CODE128', width: 2, height: 50, displayValue: true, fontSize: 12, margin: 4 }); } catch {}
     }
     if (data) {
-      const trackUrl = `${window.location.origin}/track/${data.trackingCode || data.jobId}`;
+      const trackUrl = getTrackingUrl(data.trackingCode || data.jobId);
       QRCode.toDataURL(trackUrl, { width: 200, margin: 2, color: { dark: '#1a1a2e', light: '#ffffff' } })
         .then(setQrDataUrl)
         .catch(() => setQrDataUrl(null));
@@ -245,7 +245,7 @@ export default function JobDetail() {
     const w = window.open('', '_blank');
     if (!w) return;
     const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
-    const qrUrl = `${window.location.origin}/track/${jobData.trackingCode || jobData.jobId}`;
+    const qrUrl = getTrackingUrl(jobData.trackingCode || jobData.jobId);
     
     QRCode.toDataURL(qrUrl, { width: 120, margin: 2 }).then(qrSrc => {
       w.document.write(`<!DOCTYPE html><html><head>

@@ -1,11 +1,12 @@
 import QRCode from 'qrcode';
+import { getTrackingUrl } from '../services/api';
 
 export async function generateQRDataUrl(text) {
   return QRCode.toDataURL(text, { width: 200, margin: 2, color: { dark: '#1a1a2e', light: '#ffffff' } });
 }
 
 export async function generateJobCardImage(job, customer, baseUrl) {
-  const trackingUrl = `${baseUrl || window.location.origin}/track/${job.trackingCode || job.jobId}`;
+  const trackingUrl = getTrackingUrl(job.trackingCode || job.jobId);
   const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
   
   let qrSrc = '';
@@ -99,8 +100,7 @@ export async function generateJobCardImage(job, customer, baseUrl) {
 export async function printA4Receipt(job, customer, repair, bill, baseUrl) {
   const w = window.open('', '_blank');
   if (!w) return;
-  const origin = baseUrl || window.location.origin;
-  const trackingUrl = `${origin}/track/${job.trackingCode || job.jobId}`;
+  const trackingUrl = getTrackingUrl(job.trackingCode || job.jobId);
   const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
   let qrSrc = '';
@@ -217,7 +217,7 @@ export async function printA4Receipt(job, customer, repair, bill, baseUrl) {
 export async function printThermalLabel(job, customer, baseUrl, type = 'full') {
   const w = window.open('', '_blank');
   if (!w) return;
-  const trackingUrl = `${baseUrl || window.location.origin}/track/${job.trackingCode || job.jobId}`;
+  const trackingUrl = getTrackingUrl(job.trackingCode || job.jobId);
 
   let qrSrc = '';
   try { qrSrc = await generateQRDataUrl(trackingUrl); } catch {}

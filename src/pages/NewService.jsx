@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nanoid } from 'nanoid';
-import { endpoints } from '../services/api';
+import { endpoints, getTrackingUrl } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useBranch } from '../context/BranchContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -241,7 +241,7 @@ export default function NewService() {
 
   function handleShareWhatsApp() {
     if (!jobCardData) return;
-    const trackingUrl = `${window.location.origin}/track/${jobCardData.trackingCode || jobCardData.jobId}`;
+    const trackingUrl = getTrackingUrl(jobCardData.trackingCode || jobCardData.jobId);
     let message = `Hello ${jobCardData.customer?.name || 'Customer'},\n\nYour service request has been created.\n\nJob ID: ${jobCardData.jobId}\nDevice: ${jobCardData.device} ${jobCardData.brand} ${jobCardData.model}\nProblem: ${jobCardData.problem}\n\nTrack your repair: ${trackingUrl}`;
     if (jobCardData.customerPassword) {
       message += `\n\nLogin credentials:\nPhone: ${jobCardData.customer?.mobile}\nPassword: ${jobCardData.customerPassword}`;
