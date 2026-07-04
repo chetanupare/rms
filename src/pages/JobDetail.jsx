@@ -50,6 +50,18 @@ export default function JobDetail() {
   const [selectedMainStatus, setSelectedMainStatus] = useState('');
   const [selectedSubStatus, setSelectedSubStatus] = useState('');
 
+  const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
+  const [warrantyInWarranty, setWarrantyInWarranty] = useState(false);
+  const [warrantySerialNo, setWarrantySerialNo] = useState('');
+  const [warrantyServiceCenter, setWarrantyServiceCenter] = useState('');
+  const [warrantyDocketDetail, setWarrantyDocketDetail] = useState('');
+  const [savingWarranty, setSavingWarranty] = useState(false);
+  const [serviceCenters, setServiceCenters] = useState([]);
+  const [loadingCenters, setLoadingCenters] = useState(false);
+  const [selectedCenter, setSelectedCenter] = useState(null);
+
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
+
   useEffect(() => {
     setLoading(true);
     endpoints.jobCardById(id).then(({ data }) => setData(data)).catch(() => addToast('Failed to load job', 'error')).finally(() => setLoading(false));
@@ -174,6 +186,149 @@ export default function JobDetail() {
     setStatusModalOpen(true);
   }
 
+  function openWarrantyModal() {
+    setWarrantyInWarranty(data.inWarranty || false);
+    setWarrantySerialNo(data.serialNo || '');
+    setWarrantyServiceCenter(data.serviceCenterAddress || '');
+    setWarrantyDocketDetail(data.docketDetail || '');
+    setSelectedCenter(null);
+    setWarrantyModalOpen(true);
+    setLoadingCenters(true);
+    endpoints.serviceCenters({ brand: data.brand })
+      .then(({ data: centers }) => {
+        const allCenters = centers || [];
+        const filtered = allCenters.filter(c => 
+          c.deviceType.toLowerCase().includes(data.device?.toLowerCase() || '') ||
+          (data.device || '').toLowerCase().includes(c.deviceType.toLowerCase()) ||
+          c.deviceType === 'Laptop'
+        );
+        setServiceCenters(filtered.length > 0 ? filtered : allCenters);
+        if (data.serviceCenterAddress) {
+          const match = allCenters.find(c => `${c.brand} - ${c.deviceType} - ${c.location}` === data.serviceCenterAddress);
+          if (match) setSelectedCenter(match);
+        }
+      })
+      .catch(() => setServiceCenters([]))
+      .finally(() => setLoadingCenters(false));
+  }
+
+  function handleServiceCenterChange(val) {
+    setWarrantyServiceCenter(val);
+    const center = serviceCenters.find(c => c._id === val);
+    if (center) {
+      setSelectedCenter(center);
+      setWarrantyServiceCenter(`${center.brand} - ${center.deviceType} - ${center.location}`);
+    } else {
+      setSelectedCenter(null);
+    }
+  }
+
+  async function handleWarrantySubmit(e) {
+    e.preventDefault();
+    setSavingWarranty(true);
+    try {
+      await endpoints.updateJobCard(data._id, { inWarranty: warrantyInWarranty, serialNo: warrantySerialNo, serviceCenterAddress: warrantyServiceCenter, docketDetail: warrantyDocketDetail });
+      await api.post('/activity', { jobId: data.jobId, action: 'Warranty Updated', details: warrantyInWarranty ? `In Warranty - ${warrantySerialNo}` : 'No Warranty', user: user?.username });
+      addToast('Warranty details updated', 'success');
+      setWarrantyModalOpen(false);
+      const res = await endpoints.jobCardById(id); setData(res.data);
+      if (warrantyInWarranty && selectedCenter) {
+        if (confirm('Print shipping label for service center?')) {
+          printShippingLabel(res.data, selectedCenter);
+        }
+      }
+    } catch { addToast('Failed to update warranty', 'error'); }
+    finally { setSavingWarranty(false); }
+  }
+
+  function printShippingLabel(jobData, center) {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+    const qrUrl = `${window.location.origin}/track/${jobData.trackingCode || jobData.jobId}`;
+    
+    QRCode.toDataURL(qrUrl, { width: 120, margin: 2 }).then(qrSrc => {
+      w.document.write(`<!DOCTYPE html><html><head>
+        <title>Shipping Label ${jobData.jobId}</title>
+        <style>
+          @page{size:A6;margin:8mm}
+          *{margin:0;padding:0;box-sizing:border-box}
+          body{font-family:system-ui,sans-serif;color:#1a1a2e;font-size:10px;line-height:1.4;padding:4mm}
+          .header{background:linear-gradient(135deg,#0f0c29,#302b63);color:#fff;padding:10px 12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+          .header h1{font-size:12px;font-weight:700}
+          .header .id{font-family:monospace;font-size:10px;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:4px}
+          .section{border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:8px}
+          .section-title{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:4px}
+          .row{display:flex;gap:8px}
+          .col{flex:1}
+          .label{font-size:7px;color:#64748b;text-transform:uppercase}
+          .value{font-size:10px;font-weight:600}
+          .center-info{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;margin-bottom:8px}
+          .center-info .name{font-size:11px;font-weight:700;color:#166534}
+          .center-info .detail{font-size:9px;color:#15803d;margin-top:2px}
+          .qr-section{display:flex;align-items:center;gap:10px;background:#f8fafc;border-radius:6px;padding:8px;margin-top:8px}
+          .qr-section img{width:60px;height:60px}
+          .qr-section .track{font-family:monospace;font-size:11px;font-weight:700;color:#cd0063}
+          .footer{text-align:center;font-size:7px;color:#94a3b8;margin-top:8px;border-top:1px solid #e2e8f0;padding-top:6px}
+        </style>
+      </head><body>
+        <div class="header">
+          <h1>Sai Laptop & Computer Gallery</h1>
+          <div class="id">${jobData.jobId}</div>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Ship To (Service Center)</div>
+          <div class="center-info">
+            <div class="name">${center.brand} - ${center.deviceType}</div>
+            <div class="detail">${center.location}</div>
+            <div class="detail">${center.city} · ${center.contact}</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col section">
+            <div class="section-title">Customer</div>
+            <div class="value">${jobData.customer?.name || '—'}</div>
+            <div class="label">${jobData.customer?.mobile || ''}</div>
+          </div>
+          <div class="col section">
+            <div class="section-title">Device</div>
+            <div class="value">${jobData.device} ${jobData.brand} ${jobData.model}</div>
+            <div class="label">S/N: ${jobData.serialNo || '—'}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Problem</div>
+          <div style="font-size:9px">${jobData.problem || '—'}</div>
+        </div>
+
+        ${jobData.docketDetail ? `<div class="section">
+          <div class="section-title">Docket / Tracking</div>
+          <div class="value">${jobData.docketDetail}</div>
+        </div>` : ''}
+
+        <div class="qr-section">
+          <img src="${qrSrc}" alt="QR"/>
+          <div>
+            <div class="label">Track Repair</div>
+            <div class="track">${jobData.trackingCode || jobData.jobId}</div>
+            <div style="font-size:7px;color:#64748b;margin-top:2px">${qrUrl}</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>Date: ${now}</div>
+          <div>Sai Laptop & Computer Gallery · Wani, Yavatmal · +91-9823687568</div>
+        </div>
+
+        <script>setTimeout(function(){window.focus();window.print()},400)<\/script>
+      </body></html>`);
+      w.document.close();
+    });
+  }
+
   function formatStatusName(str) {
     if (!str) return '';
     return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -211,9 +366,10 @@ export default function JobDetail() {
           {job.status === 'In Progress' && <button className="btn btn-primary" onClick={handleComplete}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>check</span> Complete</button>}
           {job.status === 'Billed' && <button className="btn btn-primary" onClick={handleDeliver}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>handshake</span> Deliver</button>}
           {job.status !== 'Delivered' && <button className="btn btn-ghost" onClick={openStatusModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>update</span> Update Status</button>}
+          <button className="btn btn-ghost" onClick={openWarrantyModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>verified</span> Warranty</button>
           {c.mobile && <button className="btn btn-ghost" onClick={() => openWhatsApp(c.mobile, `Hi ${c.name}, job ${job.jobId} (${job.device} ${job.model}) is: ${displayStatus}.`)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>chat</span> WhatsApp</button>}
           <button className="btn btn-ghost" onClick={() => printA4Receipt(job, c, r, b, window.location.origin)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>receipt</span> A4</button>
-          <button className="btn btn-ghost" onClick={() => printThermalLabel(job, c, window.location.origin)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>label</span> Label</button>
+          <button className="btn btn-ghost" onClick={() => setLabelModalOpen(true)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>label</span> Label</button>
         </div>
       </div>
 
@@ -558,6 +714,85 @@ export default function JobDetail() {
             <button type="submit" className="btn btn-primary">Update Status</button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={warrantyModalOpen} onClose={() => setWarrantyModalOpen(false)} title="Warranty Details">
+        <form onSubmit={handleWarrantySubmit}>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={warrantyInWarranty} onChange={(e) => setWarrantyInWarranty(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--c-accent)' }} />
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Device is In Warranty (RMA)</span>
+            </label>
+          </div>
+          {warrantyInWarranty && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Serial Number</label>
+                <input className="form-input" value={warrantySerialNo} onChange={(e) => setWarrantySerialNo(e.target.value)} placeholder="Enter S/N" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Service Center</label>
+                {loadingCenters ? (
+                  <div style={{ padding: 8, textAlign: 'center' }}><div className="spinner" style={{ width: 16, height: 16, margin: '0 auto' }} /></div>
+                ) : (
+                  <select className="form-input" value={selectedCenter?._id || ''} onChange={(e) => {
+                    if (e.target.value === '__custom__') {
+                      setSelectedCenter(null);
+                      setWarrantyServiceCenter('');
+                    } else {
+                      handleServiceCenterChange(e.target.value);
+                    }
+                  }}>
+                    <option value="">Select Service Center...</option>
+                    {serviceCenters.map(c => (
+                      <option key={c._id} value={c._id}>{c.brand} - {c.deviceType} — {c.location}, {c.city}</option>
+                    ))}
+                    <option value="__custom__">Custom / Enter manually</option>
+                  </select>
+                )}
+                {selectedCenter && (
+                  <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(16,185,129,.06)', border: '1px solid rgba(16,185,129,.2)', borderRadius: 6, fontSize: 11 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--c-green)' }}>{selectedCenter.brand} - {selectedCenter.deviceType}</div>
+                    <div style={{ color: 'var(--c-text2)', marginTop: 2 }}>{selectedCenter.location}</div>
+                    <div style={{ color: 'var(--c-text3)', marginTop: 2 }}>{selectedCenter.city} · {selectedCenter.contact}</div>
+                  </div>
+                )}
+                {!selectedCenter && !loadingCenters && (
+                  <input className="form-input mt-1" value={warrantyServiceCenter} onChange={(e) => setWarrantyServiceCenter(e.target.value)} placeholder="Or enter service center manually" />
+                )}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Docket Details</label>
+                <input className="form-input" value={warrantyDocketDetail} onChange={(e) => setWarrantyDocketDetail(e.target.value)} placeholder="Tracking / Docket #" />
+              </div>
+            </>
+          )}
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setWarrantyModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={savingWarranty}>
+              {savingWarranty ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Save Warranty'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={labelModalOpen} onClose={() => setLabelModalOpen(false)} title="Print Label">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button className="btn btn-primary" onClick={() => { setLabelModalOpen(false); printThermalLabel(job, c, window.location.origin, 'qr'); }} style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 20 }}>qr_code_2</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 600 }}>Tracking QR Code</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Print label with QR code for tracking</div>
+            </div>
+          </button>
+          <button className="btn btn-primary" onClick={() => { setLabelModalOpen(false); printThermalLabel(job, c, window.location.origin, 'barcode'); }} style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 20 }}>barcode</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 600 }}>Bar Code</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Print label with CODE128 barcode</div>
+            </div>
+          </button>
+        </div>
       </Modal>
 
     </div>

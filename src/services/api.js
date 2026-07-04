@@ -108,4 +108,11 @@ export const endpoints = {
   clearAll: () => api.post('/admin/clear-all'),
   createUser: (data) => api.post('/admin/create-user', data),
   saveDevice: (data) => api.post('/admin/save-device', data),
+
+  // Service Centers
+  serviceCenters: (params) => api.get('/service-centers', { params }),
+  serviceCenterBrands: () => api.get('/service-centers/brands'),
+  createServiceCenter: (data) => api.post('/service-centers', data),
+  updateServiceCenter: (id, data) => api.put(`/service-centers/${id}`, data),
+  deleteServiceCenter: (id) => api.delete(`/service-centers/${id}`),
 };

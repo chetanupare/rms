@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
       { $inc: { seq: 1 } },
       { upsert: true, returnDocument: 'after' }
     );
-    const customerId = seq.seq;
+    const customerId = seq.value?.seq || seq.seq || 1;
 
     const doc = {
       ...(clientId ? { _id: clientId } : {}),
@@ -111,7 +111,7 @@ router.post('/', async (req, res) => {
       { $inc: { seq: 1 } },
       { upsert: true, returnDocument: 'after' }
     );
-    const seqVal = jobSeq?.value?.seq || 1;
+    const seqVal = jobSeq?.value?.seq || jobSeq?.seq || 1;
     const jobId = `RM-${dateStr}-${String(seqVal).padStart(6, '0')}`;
     const trackingCode = nanoid(8);
 

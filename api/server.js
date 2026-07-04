@@ -25,7 +25,8 @@ import inventoryRoutes from './routes/inventory.js';
 import warrantyRoutes from './routes/warranty.js';
 import receptionRoutes from './routes/reception.js';
 import adminRoutes from './routes/admin.js';
-import { seedAdmin, seedIndexes } from './seed.js';
+import serviceCenterRoutes from './routes/serviceCenters.js';
+import { seedAdmin, seedIndexes, seedServiceCenters } from './seed.js';
 import { logger } from './logger.js';
 
 const app = express();
@@ -64,6 +65,7 @@ async function start() {
 
     await seedAdmin(db);
     await seedIndexes(db);
+    await seedServiceCenters(db);
 
     app.get('/api/tags', authenticate, async (req, res) => {
       try {
@@ -129,6 +131,7 @@ async function start() {
     app.use('/api/warranty', warrantyRoutes);
     app.use('/api/reception', receptionRoutes);
     app.use('/api/admin', adminRoutes);
+    app.use('/api/service-centers', serviceCenterRoutes);
     app.use('/track', trackRoutes);
 
     app.use((err, req, res, next) => {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { api, endpoints } from '../services/api';
+import Modal from '../components/Modal';
 
 const isElectron = !!window.electronAPI?.isElectron;
 
@@ -55,6 +56,63 @@ export default function Settings() {
   }
 
   const [clearing, setClearing] = useState('');
+  const [serviceCenters, setServiceCenters] = useState([]);
+  const [loadingCenters, setLoadingCenters] = useState(false);
+  const [centerModalOpen, setCenterModalOpen] = useState(false);
+  const [editingCenter, setEditingCenter] = useState(null);
+  const [centerForm, setCenterForm] = useState({ brand: '', deviceType: '', location: '', city: '', contact: '' });
+  const [savingCenter, setSavingCenter] = useState(false);
+  const [centerFilter, setCenterFilter] = useState('');
+
+  useEffect(() => {
+    loadServiceCenters();
+  }, []);
+
+  async function loadServiceCenters() {
+    setLoadingCenters(true);
+    try {
+      const { data } = await endpoints.serviceCenters();
+      setServiceCenters(data || []);
+    } catch { } finally { setLoadingCenters(false); }
+  }
+
+  function openAddCenter() {
+    setEditingCenter(null);
+    setCenterForm({ brand: '', deviceType: '', location: '', city: '', contact: '' });
+    setCenterModalOpen(true);
+  }
+
+  function openEditCenter(center) {
+    setEditingCenter(center);
+    setCenterForm({ brand: center.brand, deviceType: center.deviceType, location: center.location || '', city: center.city || '', contact: center.contact || '' });
+    setCenterModalOpen(true);
+  }
+
+  async function handleSaveCenter(e) {
+    e.preventDefault();
+    if (!centerForm.brand || !centerForm.deviceType) return addToast('Brand and Device Type required', 'error');
+    setSavingCenter(true);
+    try {
+      if (editingCenter) {
+        await endpoints.updateServiceCenter(editingCenter._id, centerForm);
+        addToast('Service center updated', 'success');
+      } else {
+        await endpoints.createServiceCenter(centerForm);
+        addToast('Service center added', 'success');
+      }
+      setCenterModalOpen(false);
+      loadServiceCenters();
+    } catch { addToast('Failed to save', 'error'); } finally { setSavingCenter(false); }
+  }
+
+  async function handleDeleteCenter(id) {
+    if (!confirm('Delete this service center?')) return;
+    try {
+      await endpoints.deleteServiceCenter(id);
+      addToast('Deleted', 'success');
+      loadServiceCenters();
+    } catch { addToast('Failed to delete', 'error'); }
+  }
 
   async function handleClear(type) {
     const labels = { jobs: 'all repair jobs & billing', customers: 'all customers', all: 'ALL data (jobs, customers, everything)' };
@@ -140,6 +198,65 @@ export default function Settings() {
         </div>
       </div>
 
+      <div className="card mt-4" style={{ maxWidth: 700 }}>
+        <div className="sec-head" style={{ justifyContent: 'space-between' }}>
+          <span className="t-sm">Service Centers (Warranty/RMA) — {serviceCenters.length}</span>
+          <button className="btn btn-primary btn-sm" onClick={openAddCenter} style={{ padding: '4px 12px', fontSize: 12 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span> Add
+          </button>
+        </div>
+        <p className="t-xs muted mb-3">Manage authorized service centers for warranty claims. These appear in the warranty details dropdown.</p>
+        <div style={{ marginBottom: 12 }}>
+          <input className="form-input" value={centerFilter} onChange={(e) => setCenterFilter(e.target.value)} placeholder="Filter by brand, device, city..." style={{ fontSize: 12, padding: '8px 12px' }} />
+        </div>
+        {loadingCenters ? (
+          <div style={{ textAlign: 'center', padding: 20 }}><div className="spinner" style={{ width: 20, height: 20, margin: '0 auto' }} /></div>
+        ) : serviceCenters.length === 0 ? (
+          <div className="t-sm muted" style={{ textAlign: 'center', padding: 20 }}>No service centers added yet</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--c-border)' }}>
+                  <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'var(--c-text3)' }}>Brand</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'var(--c-text3)' }}>Device</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'var(--c-text3)' }}>Location</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'var(--c-text3)' }}>City</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'var(--c-text3)' }}>Contact</th>
+                  <th style={{ padding: '8px 6px', width: 60 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {serviceCenters
+                  .filter(c => {
+                    if (!centerFilter) return true;
+                    const q = centerFilter.toLowerCase();
+                    return c.brand.toLowerCase().includes(q) || 
+                           c.deviceType.toLowerCase().includes(q) || 
+                           (c.city || '').toLowerCase().includes(q) ||
+                           (c.location || '').toLowerCase().includes(q);
+                  })
+                  .map(c => (
+                  <tr key={c._id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>{c.brand}</td>
+                    <td style={{ padding: '8px 6px' }}>{c.deviceType}</td>
+                    <td style={{ padding: '8px 6px', fontSize: 11 }}>{c.location}</td>
+                    <td style={{ padding: '8px 6px' }}>{c.city}</td>
+                    <td style={{ padding: '8px 6px', fontFamily: 'monospace', fontSize: 11 }}>{c.contact}</td>
+                    <td style={{ padding: '8px 6px' }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn-icon" onClick={() => openEditCenter(c)} style={{ width: 24, height: 24 }}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>edit</span></button>
+                        <button className="btn-icon" onClick={() => handleDeleteCenter(c._id)} style={{ width: 24, height: 24, color: 'var(--c-red)' }}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>delete</span></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {isElectron && (
         <>
           <div className="card mt-4" style={{ maxWidth: 480 }}>
@@ -212,6 +329,41 @@ export default function Settings() {
           </div>
         </>
       )}
+
+      <Modal open={centerModalOpen} onClose={() => setCenterModalOpen(false)} title={editingCenter ? 'Edit Service Center' : 'Add Service Center'}>
+        <form onSubmit={handleSaveCenter}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Brand *</label>
+              <input className="form-input" value={centerForm.brand} onChange={(e) => setCenterForm({ ...centerForm, brand: e.target.value })} placeholder="e.g. HP, Dell, Lenovo" required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Device Type *</label>
+              <input className="form-input" value={centerForm.deviceType} onChange={(e) => setCenterForm({ ...centerForm, deviceType: e.target.value })} placeholder="e.g. Laptop, Printer, Router" required />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Service Location</label>
+            <input className="form-input" value={centerForm.location} onChange={(e) => setCenterForm({ ...centerForm, location: e.target.value })} placeholder="Full address" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">City</label>
+              <input className="form-input" value={centerForm.city} onChange={(e) => setCenterForm({ ...centerForm, city: e.target.value })} placeholder="e.g. Chandrapur, Nagpur" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Contact</label>
+              <input className="form-input" value={centerForm.contact} onChange={(e) => setCenterForm({ ...centerForm, contact: e.target.value })} placeholder="Phone / Toll-free / Walk-in" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setCenterModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={savingCenter}>
+              {savingCenter ? <span className="spinner" style={{ width: 14, height: 14 }} /> : (editingCenter ? 'Update' : 'Add Center')}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

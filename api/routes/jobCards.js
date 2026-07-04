@@ -138,7 +138,7 @@ router.post('/', async (req, res) => {
       { $inc: { seq: 1 } },
       { upsert: true, returnDocument: 'after' }
     );
-    const seqVal = seq?.value?.seq || 1;
+    const seqVal = seq?.value?.seq || seq?.seq || 1;
     const jobId = `RM-${dateStr}-${String(seqVal).padStart(6, '0')}`;
     const trackingCode = nanoid(8);
 
@@ -226,7 +226,7 @@ router.post('/:id/transfer', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { status, subStatus, diagnosticFee, paymentMode } = req.body;
+    const { status, subStatus, diagnosticFee, paymentMode, inWarranty, serialNo, serviceCenterAddress, docketDetail } = req.body;
     const job = await req.db.collection('job_cards').findOne({ _id: toId(req.params.id) });
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
@@ -239,7 +239,7 @@ router.put('/:id', async (req, res) => {
       await req.db.collection('activity_logs').insertOne({ jobId: job.jobId, action: 'status_change', details: 'Exited waiting_parts (KPI resumed)', createdAt: now });
     }
 
-    let finalStatus = status;
+    let finalStatus = status || job.status;
 
     // Handle Rejected / Diagnostic Only workflow
     if (status === 'Rejected' || status === 'Closed (Diagnostic Only)') {
@@ -265,8 +265,15 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const updateObj = { status: finalStatus };
+    const updateObj = {};
+    if (finalStatus) updateObj.status = finalStatus;
     if (subStatus !== undefined) updateObj.subStatus = subStatus;
+    
+    // Handle warranty fields
+    if (inWarranty !== undefined) updateObj.inWarranty = !!inWarranty;
+    if (serialNo !== undefined) updateObj.serialNo = serialNo;
+    if (serviceCenterAddress !== undefined) updateObj.serviceCenterAddress = serviceCenterAddress;
+    if (docketDetail !== undefined) updateObj.docketDetail = docketDetail;
 
     await req.db.collection('job_cards').updateOne(
       { _id: toId(req.params.id) },

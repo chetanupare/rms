@@ -5,6 +5,8 @@ import { endpoints } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useBranch } from '../context/BranchContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Modal from '../components/Modal';
+import { generateJobCardImage } from '../utils/printService';
 
 const LEAD_SOURCES = [
   { value: 'In Store Visit', icon: 'storefront', desc: 'Walked in', key: '1' },
@@ -65,10 +67,6 @@ export default function NewService() {
   const [condition, setCondition] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState('');
-  const [inWarranty, setInWarranty] = useState(false);
-  const [serialNo, setSerialNo] = useState('');
-  const [serviceCenterAddress, setServiceCenterAddress] = useState('');
-  const [docketDetail, setDocketDetail] = useState('');
   const [mobile, setMobile] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -79,6 +77,9 @@ export default function NewService() {
   const [problemSuggestions, setProblemSuggestions] = useState([]);
   const [showProblemSuggest, setShowProblemSuggest] = useState(false);
   const [searchingProblems, setSearchingProblems] = useState(false);
+  const [jobCardModalOpen, setJobCardModalOpen] = useState(false);
+  const [jobCardImage, setJobCardImage] = useState('');
+  const [jobCardData, setJobCardData] = useState(null);
   const problemRef = useRef(null);
   const mobileRef = useRef(null);
   const searchRef = useRef(null);
@@ -188,7 +189,7 @@ export default function NewService() {
         try { await endpoints.saveDevice({ deviceType: finalDeviceType, brand: finalBrand, model: finalModel }); } catch {}
       }
 
-      const jobPayload = { device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, leadSource, accessories, condition, tags: selectedTags, inWarranty, serialNo, serviceCenterAddress, docketDetail };
+      const jobPayload = { device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, leadSource, accessories, condition, tags: selectedTags };
       if (existingCustomer) {
         const customerId = existingCustomer._id;
         if (name !== existingCustomer.name || address !== (existingCustomer.address || '')) {
@@ -196,7 +197,18 @@ export default function NewService() {
         }
         const { data } = await endpoints.createJobCard({ _id: nanoid(), customerId, ...jobPayload });
         addToast('Service job created', 'success');
-        navigate(`/job/${data._id}`);
+        
+        // Generate job card image and show modal
+        const jobData = { ...data, jobId: data.jobId || data._id, device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, status: 'Pending', trackingCode: data.trackingCode };
+        const customerData = { name, mobile, address };
+        try {
+          const imgSrc = await generateJobCardImage(jobData, customerData, window.location.origin);
+          setJobCardImage(imgSrc);
+          setJobCardData({ ...jobData, customer: customerData, _id: data._id });
+          setJobCardModalOpen(true);
+        } catch {
+          navigate(`/job/${data._id}`);
+        }
       } else {
         // Create user account for the customer
         let customerPassword = '';
@@ -211,16 +223,39 @@ export default function NewService() {
         const { data } = await endpoints.createCustomer({ _id: custId, name: name || 'Guest', mobile, address: address || '', device: finalDeviceType, brand: finalBrand, model: finalModel, problem });
         addToast('Service job created', 'success');
 
-        // Open WhatsApp with credentials if new customer
-        if (customerPassword) {
-          const waMessage = encodeURIComponent(`Hello ${name || 'Customer'},\n\nYour service request has been created.\n\nLogin to track your repair:\nPhone: ${mobile}\nPassword: ${customerPassword}\n\nApp: ${window.location.origin}\n\n- Sai Laptop & Computer Gallery`);
-          window.open(`https://wa.me/91${mobile}?text=${waMessage}`, '_blank');
+        // Generate job card image and show modal
+        const jobData = { ...data, jobId: data.jobId || data.jobCardId, device: finalDeviceType, brand: finalBrand, model: finalModel, problem, branch, status: 'Pending', trackingCode: data.trackingCode };
+        const customerData = { name: name || 'Guest', mobile, address };
+        try {
+          const imgSrc = await generateJobCardImage(jobData, customerData, window.location.origin);
+          setJobCardImage(imgSrc);
+          setJobCardData({ ...jobData, customer: customerData, _id: data.jobCardId, customerPassword });
+          setJobCardModalOpen(true);
+        } catch {
+          navigate(`/job/${data.jobCardId}`);
         }
-
-        navigate(`/job/${data.jobCardId}`);
       }
     } catch (err) { addToast(err.response?.data?.message || 'Failed to create job', 'error'); }
     finally { setSaving(false); }
+  }
+
+  function handleShareWhatsApp() {
+    if (!jobCardData) return;
+    const trackingUrl = `${window.location.origin}/track/${jobCardData.trackingCode || jobCardData.jobId}`;
+    let message = `Hello ${jobCardData.customer?.name || 'Customer'},\n\nYour service request has been created.\n\nJob ID: ${jobCardData.jobId}\nDevice: ${jobCardData.device} ${jobCardData.brand} ${jobCardData.model}\nProblem: ${jobCardData.problem}\n\nTrack your repair: ${trackingUrl}`;
+    if (jobCardData.customerPassword) {
+      message += `\n\nLogin credentials:\nPhone: ${jobCardData.customer?.mobile}\nPassword: ${jobCardData.customerPassword}`;
+    }
+    message += `\n\n- Sai Laptop & Computer Gallery`;
+    window.open(`https://wa.me/91${jobCardData.customer?.mobile}?text=${encodeURIComponent(message)}`, '_blank');
+  }
+
+  function handleDownloadJobCard() {
+    if (!jobCardImage) return;
+    const link = document.createElement('a');
+    link.download = `JobCard-${jobCardData?.jobId || 'receipt'}.png`;
+    link.href = jobCardImage;
+    link.click();
   }
 
   if (loading) return <LoadingSpinner text="Loading..." />;
@@ -428,40 +463,6 @@ export default function NewService() {
         </div>
       </div>
 
-      {/* Warranty Details */}
-      <div style={{ ...s.card, marginTop: 20 }}>
-        <div style={{ ...s.sectionTitle, marginBottom: 12 }}>
-          <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-accent)' }}>verified</span> Warranty Details
-        </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: inWarranty ? 20 : 0 }}>
-          <input type="checkbox" checked={inWarranty} onChange={(e) => setInWarranty(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--c-accent)' }} />
-          <span style={{ fontSize: 14, fontWeight: 600 }}>Device is In Warranty (RMA)</span>
-        </label>
-        
-        {inWarranty && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-            <div>
-              <label style={s.label}>Serial Number</label>
-              <input style={s.input} value={serialNo} onChange={(e) => setSerialNo(e.target.value)} placeholder="Enter S/N" onFocus={focusStyle} onBlur={blurStyle} />
-            </div>
-            <div>
-              <label style={s.label}>Service Center</label>
-              <select style={s.input} value={serviceCenterAddress} onChange={(e) => setServiceCenterAddress(e.target.value)} onFocus={focusStyle} onBlur={blurStyle}>
-                <option value="">Select Service Center...</option>
-                <option value="Local Authorized SC">Local Authorized SC</option>
-                <option value="Main City SC">Main City SC</option>
-                <option value="Direct to Manufacturer">Direct to Manufacturer</option>
-                <option value="Third-party Partner">Third-party Partner</option>
-              </select>
-            </div>
-            <div>
-              <label style={s.label}>Docket Details</label>
-              <input style={s.input} value={docketDetail} onChange={(e) => setDocketDetail(e.target.value)} placeholder="Tracking / Docket #" onFocus={focusStyle} onBlur={blurStyle} />
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Tags */}
       <div style={{ ...s.card, marginTop: 20 }}>
         <div style={s.sectionTitle}>
@@ -493,6 +494,29 @@ export default function NewService() {
           </button>
         </div>
       </div>
+
+      <Modal open={jobCardModalOpen} onClose={() => { setJobCardModalOpen(false); navigate(`/job/${jobCardData?._id}`); }} title="Job Card Created" wide>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {jobCardImage && (
+            <div style={{ textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: 12 }}>
+              <img src={jobCardImage} alt="Job Card" style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 4 }} />
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {jobCardData?.customer?.mobile && (
+              <button className="btn btn-primary" onClick={handleShareWhatsApp} style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span className="material-symbols-rounded" style={{ fontSize: 18 }}>chat</span> Share via WhatsApp
+              </button>
+            )}
+            <button className="btn btn-ghost" onClick={handleDownloadJobCard} style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 18 }}>download</span> Download Image
+            </button>
+            <button className="btn btn-ghost" onClick={() => { setJobCardModalOpen(false); navigate(`/job/${jobCardData?._id}`); }} style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 18 }}>open_in_new</span> View Job
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
