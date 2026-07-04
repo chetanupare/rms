@@ -117,55 +117,50 @@ export async function printA4Receipt(job, customer, repair, bill, baseUrl) {
       @page{size:A4;margin:10mm}
       *{margin:0;padding:0;box-sizing:border-box}
       body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1a1a2e;font-size:11px;line-height:1.5}
-      .head{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;border-radius:6px 6px 0 0}
-      .head-left{display:flex;align-items:center;gap:14px}
-      .head-left img{width:48px;height:48px;border-radius:8px;background:#fff;padding:4px}
-      .head-left h1{font-size:16px;font-weight:700;letter-spacing:-.3px}
-      .head-left .sub{font-size:9px;opacity:.7;margin-top:3px;line-height:1.4}
-      .head-right{text-align:right}
-      .head-right .id{background:rgba(255,255,255,.15);padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.05em;font-family:monospace;display:inline-block}
-      .head-right .date{font-size:9px;opacity:.6;margin-top:6px}
-      .body{padding:16px 24px}
-      .grid{display:flex;gap:14px;margin-bottom:12px}
-      .grid>div{flex:1;background:#f8fafc;border-radius:6px;padding:12px 14px;border:1px solid #eef2f6}
-      .grid h3{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px}
-      .grid td{padding:2px 0;font-size:10.5px;vertical-align:top}
-      .grid td:first-child{color:#64748b;padding-right:8px;white-space:nowrap}
+      .head{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;padding:24px 28px;text-align:center;border-radius:6px 6px 0 0}
+      .head img{width:56px;height:56px;border-radius:10px;background:#fff;padding:4px;margin-bottom:10px}
+      .head h1{font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px}
+      .head .sub{font-size:10px;opacity:.7;line-height:1.4}
+      .head .id-row{margin-top:12px;display:flex;justify-content:center;gap:16px;align-items:center}
+      .head .id{background:rgba(255,255,255,.15);padding:6px 16px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:.05em;font-family:monospace}
+      .head .date{font-size:10px;opacity:.7}
+      .body{padding:20px 28px}
+      .grid{display:flex;gap:16px;margin-bottom:14px}
+      .grid>div{flex:1;background:#f8fafc;border-radius:6px;padding:14px 16px;border:1px solid #eef2f6}
+      .grid h3{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:8px}
+      .grid td{padding:3px 0;font-size:11px;vertical-align:top}
+      .grid td:first-child{color:#64748b;padding-right:10px;white-space:nowrap;font-weight:500}
       .grid td:last-child{font-weight:600;color:#1a1a2e}
-      h2{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin:12px 0 6px;border-bottom:1.5px solid #eef2f6;padding-bottom:4px}
+      h2{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin:14px 0 8px;border-bottom:1.5px solid #eef2f6;padding-bottom:5px}
       .tbl{width:100%;border-collapse:collapse}
-      .tbl th{padding:6px 8px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #eef2f6;text-align:left}
-      .tbl td{padding:6px 8px;font-size:10.5px;border-bottom:1px solid #f1f5f9}
+      .tbl th{padding:8px 10px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #eef2f6;text-align:left}
+      .tbl td{padding:8px 10px;font-size:11px;border-bottom:1px solid #f1f5f9}
       .tbl tr:last-child td{border-bottom:none}
-      .total{font-size:12px;font-weight:700;color:#cd0063}
-      .advance-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:10px 14px;margin:8px 0;display:flex;justify-content:space-between;align-items:center}
-      .advance-box .label{font-size:10px;color:#059669;font-weight:600}
-      .advance-box .amount{font-size:14px;font-weight:700;color:#059669}
-      .rem{background:#f8fafc;border-radius:6px;padding:10px 12px;font-size:10.5px;border:1px solid #eef2f6;margin-top:4px}
+      .total{font-size:14px;font-weight:700;color:#cd0063}
+      .advance-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:12px 16px;margin:10px 0;display:flex;justify-content:space-between;align-items:center}
+      .advance-box .label{font-size:11px;color:#059669;font-weight:600}
+      .advance-box .amount{font-size:16px;font-weight:700;color:#059669}
+      .rem{background:#f8fafc;border-radius:6px;padding:12px 14px;font-size:11px;border:1px solid #eef2f6;margin-top:6px}
       .rem strong{color:#1a1a2e}
       .rem .m{color:#64748b}
-      .ft{display:flex;justify-content:space-between;align-items:flex-start;margin-top:12px;padding-top:12px;border-top:1px solid #eef2f6}
-      .terms{font-size:8.5px;color:#94a3b8;line-height:1.6;max-width:65%}
+      .ft{display:flex;justify-content:space-between;align-items:flex-start;margin-top:14px;padding-top:14px;border-top:1px solid #eef2f6}
+      .terms{font-size:9px;color:#94a3b8;line-height:1.6;max-width:65%}
       .terms b{color:#64748b}
       .qr{text-align:center}
-      .qr img{width:72px;height:72px;border-radius:4px;display:block;margin:0 auto}
-      .qr .l{font-size:7px;color:#94a3b8;margin-top:3px}
-      .sign{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed #ddd}
-      .sign .s{font-size:8px;color:#94a3b8}
+      .qr img{width:80px;height:80px;border-radius:4px;display:block;margin:0 auto}
+      .qr .l{font-size:8px;color:#94a3b8;margin-top:4px}
+      .sign{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed #ddd}
+      .sign .s{font-size:9px;color:#94a3b8}
       .sign .s b{color:#555}
-      .gen{text-align:center;font-size:7px;color:#cbd5e1;margin-top:8px}
-      .watermark{text-align:center;font-size:7px;color:#e2e8f0;margin-top:4px}
+      .gen{text-align:center;font-size:8px;color:#cbd5e1;margin-top:10px}
+      .watermark{text-align:center;font-size:8px;color:#e2e8f0;margin-top:6px}
     </style></head><body>
     <div class="head">
-      <div class="head-left">
-        <img src="${origin}/logo.png" alt="Logo" onerror="this.style.display='none'" />
-        <div>
-          <h1>Sai Laptop &amp; Computer Gallery</h1>
-          <div class="sub">Virani Complex, 1st Floor (near Virani Function Hall/Talkies), Wani, Yavatmal, Maharashtra</div>
-          <div class="sub">+91-9823687568 · +91-9049687568 · +91-9067687568</div>
-        </div>
-      </div>
-      <div class="head-right">
+      <img src="${origin}/logo.png" alt="Logo" onerror="this.style.display='none'" />
+      <h1>Sai Laptop &amp; Computer Gallery</h1>
+      <div class="sub">Virani Complex, 1st Floor (near Virani Function Hall/Talkies), Wani, Yavatmal, Maharashtra</div>
+      <div class="sub">+91-9823687568 · +91-9049687568 · +91-9067687568</div>
+      <div class="id-row">
         <div class="id">${job.jobId}</div>
         <div class="date">${now}</div>
       </div>
@@ -225,8 +220,6 @@ export async function printThermalLabel(job, customer, baseUrl, type = 'full') {
   const w = window.open('', '_blank');
   if (!w) return;
   const trackingUrl = `${baseUrl || window.location.origin}/track/${job.trackingCode || job.jobId}`;
-
-  w.document.write('<html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#666;font-size:12px">Generating label...</body></html>');
 
   let qrSrc = '';
   try { qrSrc = await generateQRDataUrl(trackingUrl); } catch {}

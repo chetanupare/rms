@@ -13,8 +13,15 @@ export default function ServiceCenters() {
   const [form, setForm] = useState({ brand: '', deviceType: '', location: '', city: '', contact: '' });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('');
+  
+  const [brands, setBrands] = useState([]);
+  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [brandIsOther, setBrandIsOther] = useState(false);
+  const [deviceIsOther, setDeviceIsOther] = useState(false);
+  const [customBrand, setCustomBrand] = useState('');
+  const [customDevice, setCustomDevice] = useState('');
 
-  useEffect(() => { loadCenters(); }, []);
+  useEffect(() => { loadCenters(); loadBrands(); }, []);
 
   async function loadCenters() {
     setLoading(true);
@@ -24,28 +31,58 @@ export default function ServiceCenters() {
     } catch { } finally { setLoading(false); }
   }
 
+  async function loadBrands() {
+    try {
+      const { data: brandData } = await endpoints.brands();
+      const uniqueBrands = [...new Set((brandData || []).map(b => b.name))].sort();
+      setBrands(uniqueBrands);
+      
+      const uniqueTypes = [...new Set((brandData || []).map(b => b.deviceType))].sort();
+      setDeviceTypes(uniqueTypes);
+    } catch { }
+  }
+
   function openAdd() {
     setEditing(null);
     setForm({ brand: '', deviceType: '', location: '', city: '', contact: '' });
+    setBrandIsOther(false);
+    setDeviceIsOther(false);
+    setCustomBrand('');
+    setCustomDevice('');
     setModalOpen(true);
   }
 
   function openEdit(c) {
     setEditing(c);
+    const isBrandKnown = brands.includes(c.brand);
+    const isDeviceKnown = deviceTypes.includes(c.deviceType);
+    setBrandIsOther(!isBrandKnown);
+    setDeviceIsOther(!isDeviceKnown);
+    setCustomBrand(isBrandKnown ? '' : c.brand);
+    setCustomDevice(isKnown ? '' : c.deviceType);
     setForm({ brand: c.brand, deviceType: c.deviceType, location: c.location || '', city: c.city || '', contact: c.contact || '' });
     setModalOpen(true);
   }
 
+  function getFinalForm() {
+    return {
+      ...form,
+      brand: brandIsOther ? customBrand : form.brand,
+      deviceType: deviceIsOther ? customDevice : form.deviceType,
+    };
+  }
+
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.brand || !form.deviceType) return addToast('Brand and Device required', 'warning');
+    const finalForm = getFinalForm();
+    if (!finalForm.brand || !finalForm.deviceType) return addToast('Brand and Device required', 'warning');
     setSaving(true);
     try {
       if (editing) {
-        await endpoints.updateServiceCenter(editing._id, form);
+        await endpoints.updateServiceCenter(editing._id, finalForm);
         addToast('Updated', 'success');
       } else {
-        await endpoints.createServiceCenter(form);
+        await endpoints.createServiceCenter(finalForm);
         addToast('Added', 'success');
       }
       setModalOpen(false);
@@ -65,7 +102,7 @@ export default function ServiceCenters() {
     return c.brand.toLowerCase().includes(q) || c.deviceType.toLowerCase().includes(q) || (c.city || '').toLowerCase().includes(q) || (c.location || '').toLowerCase().includes(q);
   });
 
-  const brands = [...new Set(centers.map(c => c.brand))].sort();
+  const uniqueBrands = [...new Set(centers.map(c => c.brand))].sort();
 
   if (loading) return <LoadingSpinner text="Loading service centers..." />;
 
@@ -74,7 +111,7 @@ export default function ServiceCenters() {
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div className="page-title">
           <div style={{ fontSize: 20, fontWeight: 700 }}>Service Centers</div>
-          <div style={{ fontSize: 12, color: 'var(--c-text3)' }}>{centers.length} centers · {brands.length} brands</div>
+          <div style={{ fontSize: 12, color: 'var(--c-text3)' }}>{centers.length} centers · {uniqueBrands.length} brands</div>
         </div>
         <div className="page-actions">
           <input className="form-input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter..." style={{ width: 200, fontSize: 12, padding: '6px 12px' }} />
@@ -117,8 +154,42 @@ export default function ServiceCenters() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Service Center' : 'Add Service Center'}>
         <form onSubmit={handleSave}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="form-group"><label className="form-label">Brand *</label><input className="form-input" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="HP, Dell, Lenovo..." required /></div>
-            <div className="form-group"><label className="form-label">Device Type *</label><input className="form-input" value={form.deviceType} onChange={(e) => setForm({ ...form, deviceType: e.target.value })} placeholder="Laptop, Printer..." required /></div>
+            <div className="form-group">
+              <label className="form-label">Brand *</label>
+              {brandIsOther ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input className="form-input" value={customBrand} onChange={(e) => setCustomBrand(e.target.value)} placeholder="Enter brand" required autoFocus style={{ flex: 1 }} />
+                  <button type="button" className="btn btn-ghost" onClick={() => { setBrandIsOther(false); setCustomBrand(''); }} style={{ padding: '6px 10px' }}>✕</button>
+                </div>
+              ) : (
+                <select className="form-input" value={form.brand} onChange={(e) => {
+                  if (e.target.value === '__other__') { setBrandIsOther(true); setForm({ ...form, brand: '' }); }
+                  else setForm({ ...form, brand: e.target.value });
+                }} required>
+                  <option value="">Select brand...</option>
+                  {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                  <option value="__other__">+ Add New Brand</option>
+                </select>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Device Type *</label>
+              {deviceIsOther ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input className="form-input" value={customDevice} onChange={(e) => setCustomDevice(e.target.value)} placeholder="Enter device type" required autoFocus style={{ flex: 1 }} />
+                  <button type="button" className="btn btn-ghost" onClick={() => { setDeviceIsOther(false); setCustomDevice(''); }} style={{ padding: '6px 10px' }}>✕</button>
+                </div>
+              ) : (
+                <select className="form-input" value={form.deviceType} onChange={(e) => {
+                  if (e.target.value === '__other__') { setDeviceIsOther(true); setForm({ ...form, deviceType: '' }); }
+                  else setForm({ ...form, deviceType: e.target.value });
+                }} required>
+                  <option value="">Select type...</option>
+                  {deviceTypes.map(d => <option key={d} value={d}>{d}</option>)}
+                  <option value="__other__">+ Add New Type</option>
+                </select>
+              )}
+            </div>
           </div>
           <div className="form-group"><label className="form-label">Location</label><input className="form-input" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Full address" /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
