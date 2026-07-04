@@ -11,6 +11,7 @@ const SMTP_CONFIG = {
 };
 
 const RECIPIENT = 'kunalwasekar@gmail.com';
+const CC = 'chetan.upare1234@gmail.com';
 
 export async function sendRegisterEmail(date, entries, totalIn, totalOut, balance, openingBalance) {
   try {
@@ -134,6 +135,7 @@ export async function sendRegisterEmail(date, entries, totalIn, totalOut, balanc
     await transporter.sendMail({
       from: '"Sai Laptop RMS" <rms@bestgps.in>',
       to: RECIPIENT,
+      cc: CC,
       subject: `Daily Register — ${new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} — ₹${(openingBalance + totalIn - totalOut).toLocaleString('en-IN')}`,
       html,
     });
