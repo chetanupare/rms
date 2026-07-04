@@ -7,6 +7,22 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+let logoutHandler = null;
+
+export function setLogoutHandler(fn) {
+  logoutHandler = fn;
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && logoutHandler) {
+      logoutHandler();
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function assetUrl(path) {
   return `${API_BASE}${path}`;
 }

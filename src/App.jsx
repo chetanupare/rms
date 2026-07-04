@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HashRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -39,6 +39,40 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function AppRoutes() {
+  const { user, initializing } = useAuth();
+
+  if (initializing) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" style={{ width: 32, height: 32 }} /></div>;
+
+  return (
+    <Router>
+      <BranchProvider>
+        <Routes>
+          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+          <Route element={<ProtectedLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/repairs" element={<Repairs />} />
+            <Route path="/billing" element={<AdminRoute><Billing /></AdminRoute>} />
+            <Route path="/job/:id" element={<JobDetail />} />
+            <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
+            <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+            <Route path="/data-warehouse" element={<AdminRoute><DataWarehouse /></AdminRoute>} />
+            <Route path="/register" element={<AdminRoute><DailyRegistrar /></AdminRoute>} />
+            <Route path="/inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
+            <Route path="/warranty" element={<AdminRoute><WarrantyPage /></AdminRoute>} />
+            <Route path="/service-centers" element={<AdminRoute><ServiceCenters /></AdminRoute>} />
+            <Route path="/service/new" element={<NewService />} />
+            <Route path="/technicians" element={<Technicians />} />
+          </Route>
+          <Route path="/404" element={<NotFound />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BranchProvider>
+    </Router>
+  );
+}
+
 function App() {
   const [splashDone, setSplashDone] = useState(() => !!window.electronAPI?.isElectron);
 
@@ -50,31 +84,7 @@ function App() {
         <NotificationProvider>
         <ToastProvider>
           <OfflineProvider>
-          <Router>
-            <BranchProvider>
-            <Routes>
-              <Route path="/" element={<Login />} />
-              <Route element={<ProtectedLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/repairs" element={<Repairs />} />
-                <Route path="/billing" element={<AdminRoute><Billing /></AdminRoute>} />
-                <Route path="/job/:id" element={<JobDetail />} />
-                <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
-                <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
-                <Route path="/data-warehouse" element={<AdminRoute><DataWarehouse /></AdminRoute>} />
-                <Route path="/register" element={<AdminRoute><DailyRegistrar /></AdminRoute>} />
-                <Route path="/inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
-                <Route path="/warranty" element={<AdminRoute><WarrantyPage /></AdminRoute>} />
-                <Route path="/service-centers" element={<AdminRoute><ServiceCenters /></AdminRoute>} />
-                <Route path="/service/new" element={<NewService />} />
-                <Route path="/technicians" element={<Technicians />} />
-              </Route>
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            </BranchProvider>
-          </Router>
+            <AppRoutes />
           </OfflineProvider>
           <ToastContainer />
           <InstallPWA />

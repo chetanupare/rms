@@ -1,5 +1,5 @@
-import { createContext, useContext, useMemo, useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import { api, setLogoutHandler } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +10,19 @@ export function AuthProvider({ children }) {
   });
   const [token, setToken] = useState(() => localStorage.getItem('slcg_token'));
   const [initializing, setInitializing] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('slcg_token');
+    localStorage.removeItem('slcg_user');
+    delete api.defaults.headers.common.Authorization;
+  }, []);
+
+  useEffect(() => {
+    setLogoutHandler(logout);
+  }, [logout]);
 
   useEffect(() => {
     if (token) {
@@ -20,20 +33,30 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     if (token && !user) {
       api.get('/auth/me').then(({ data }) => {
         setUser(data.user);
         localStorage.setItem('slcg_user', JSON.stringify(data.user));
-      }).catch(() => {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('slcg_token');
-        localStorage.removeItem('slcg_user');
+      }).catch((err) => {
+        if (err.response?.status === 401) {
+          logout();
+        }
       }).finally(() => setInitializing(false));
     } else {
       setInitializing(false);
     }
-  }, [token]);
+  }, [token, logout]);
 
   async function login(username, password) {
     const { data } = await api.post('/auth/login', { username, password });
@@ -44,14 +67,7 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
-  function logout() {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('slcg_token');
-    localStorage.removeItem('slcg_user');
-  }
-
-  const value = useMemo(() => ({ user, token, login, logout, initializing }), [user, token, initializing]);
+  const value = useMemo(() => ({ user, token, login, logout, initializing, isOnline }), [user, token, initializing, isOnline, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
