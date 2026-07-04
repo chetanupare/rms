@@ -21,6 +21,14 @@ export default function WarrantyPage() {
   const [rmaForm, setRmaForm] = useState({ jobId: '', customerPhone: '', device: '', brand: '', model: '', problem: '', warrantyBillId: '' });
   const [rmaEdit, setRmaEdit] = useState(null);
   const [resolveForm, setResolveForm] = useState({ status: '', resolution: '' });
+  
+  const [brands, setBrands] = useState([]);
+  const [models, setModels] = useState([]);
+  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [brandIsOther, setBrandIsOther] = useState(false);
+  const [modelIsOther, setModelIsOther] = useState(false);
+  const [customBrand, setCustomBrand] = useState('');
+  const [customModel, setCustomModel] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -33,7 +41,25 @@ export default function WarrantyPage() {
     }).catch(() => addToast('Failed to load', 'error')).finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadBrands(); }, [load]);
+
+  async function loadBrands() {
+    try {
+      const { data: brandData } = await endpoints.brands();
+      const uniqueBrands = [...new Set((brandData || []).map(b => b.name))].sort();
+      setBrands(uniqueBrands);
+      const uniqueTypes = [...new Set((brandData || []).map(b => b.deviceType))].sort();
+      setDeviceTypes(uniqueTypes);
+    } catch { }
+  }
+
+  async function loadModels(brandName) {
+    try {
+      const { data: modelData } = await endpoints.deviceModels();
+      const filtered = (modelData || []).filter(m => m.brand === brandName);
+      setModels(filtered.map(m => m.modelName).sort());
+    } catch { }
+  }
 
   async function handleCheckWarranty() {
     if (!checkMobile) return addToast('Enter mobile number', 'warning');
@@ -180,8 +206,49 @@ export default function WarrantyPage() {
             <div className="form-group"><label className="form-label">Customer Mobile</label><input className="form-input" value={rmaForm.customerPhone} onChange={(e) => setRmaForm({ ...rmaForm, customerPhone: e.target.value })} placeholder="Enter mobile number" required /></div>
           </div>
           <div className="grid-2">
-            <div className="form-group"><label className="form-label">Device</label><input className="form-input" value={rmaForm.device} onChange={(e) => setRmaForm({ ...rmaForm, device: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Brand / Model</label><input className="form-input" value={rmaForm.brand} onChange={(e) => setRmaForm({ ...rmaForm, brand: e.target.value })} placeholder="Brand" /></div>
+            <div className="form-group">
+              <label className="form-label">Device Type</label>
+              <select className="form-input" value={rmaForm.device} onChange={(e) => setRmaForm({ ...rmaForm, device: e.target.value })}>
+                <option value="">Select device...</option>
+                {deviceTypes.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Brand</label>
+              {brandIsOther ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input className="form-input" value={customBrand} onChange={(e) => setCustomBrand(e.target.value)} placeholder="Enter brand" style={{ flex: 1 }} />
+                  <button type="button" className="btn btn-ghost" onClick={() => { setBrandIsOther(false); setCustomBrand(''); }} style={{ padding: '6px 10px' }}>✕</button>
+                </div>
+              ) : (
+                <select className="form-input" value={rmaForm.brand} onChange={(e) => {
+                  if (e.target.value === '__other__') { setBrandIsOther(true); setRmaForm({ ...rmaForm, brand: '', model: '' }); }
+                  else { setRmaForm({ ...rmaForm, brand: e.target.value, model: '' }); loadModels(e.target.value); }
+                }}>
+                  <option value="">Select brand...</option>
+                  {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                  <option value="__other__">+ Add New Brand</option>
+                </select>
+              )}
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Model</label>
+            {modelIsOther ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input className="form-input" value={customModel} onChange={(e) => setCustomModel(e.target.value)} placeholder="Enter model" style={{ flex: 1 }} />
+                <button type="button" className="btn btn-ghost" onClick={() => { setModelIsOther(false); setCustomModel(''); }} style={{ padding: '6px 10px' }}>✕</button>
+              </div>
+            ) : (
+              <select className="form-input" value={rmaForm.model} onChange={(e) => {
+                if (e.target.value === '__other__') { setModelIsOther(true); setRmaForm({ ...rmaForm, model: '' }); }
+                else setRmaForm({ ...rmaForm, model: e.target.value });
+              }} disabled={!rmaForm.brand}>
+                <option value="">Select model...</option>
+                {models.map(m => <option key={m} value={m}>{m}</option>)}
+                <option value="__other__">+ Add New Model</option>
+              </select>
+            )}
           </div>
           <div className="form-group"><label className="form-label">Problem</label><textarea className="form-input" rows={2} value={rmaForm.problem} onChange={(e) => setRmaForm({ ...rmaForm, problem: e.target.value })} /></div>
           <div className="flex justify-end gap-2 mt-3">

@@ -103,8 +103,6 @@ export async function printA4Receipt(job, customer, repair, bill, baseUrl) {
   const trackingUrl = `${origin}/track/${job.trackingCode || job.jobId}`;
   const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  w.document.write('<html><head><title>Receipt</title></head><body style="font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#64748b;font-size:14px">Preparing receipt...</body></html>');
-
   let qrSrc = '';
   try { qrSrc = await generateQRDataUrl(trackingUrl); } catch {}
 
