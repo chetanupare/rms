@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { endpoints } from '../services/api';
+import { api, endpoints } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
@@ -13,6 +13,7 @@ export default function ServiceCenters() {
   const [form, setForm] = useState({ brand: '', deviceType: '', location: '', city: '', contact: '' });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('');
+  const [seeding, setSeeding] = useState(false);
   
   const [brands, setBrands] = useState([]);
   const [deviceTypes, setDeviceTypes] = useState([]);
@@ -40,6 +41,17 @@ export default function ServiceCenters() {
       const uniqueTypes = [...new Set((brandData || []).map(b => b.deviceType))].sort();
       setDeviceTypes(uniqueTypes);
     } catch { }
+  }
+
+  async function handleSeed() {
+    if (!confirm('Seed default service centers? This will add centers if none exist.')) return;
+    setSeeding(true);
+    try {
+      const { data } = await api.post('/service-centers/seed');
+      addToast(data.message, 'success');
+      loadCenters();
+    } catch (err) { addToast(err.response?.data?.message || 'Seed failed', 'error'); }
+    finally { setSeeding(false); }
   }
 
   function openAdd() {
@@ -115,6 +127,12 @@ export default function ServiceCenters() {
         </div>
         <div className="page-actions">
           <input className="form-input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter..." style={{ width: 200, fontSize: 12, padding: '6px 12px' }} />
+          {centers.length === 0 && (
+            <button className="btn btn-ghost" onClick={handleSeed} disabled={seeding} style={{ fontSize: 12, padding: '6px 14px' }}>
+              {seeding ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <span className="material-symbols-rounded" style={{ fontSize: 14 }}>download</span>}
+              {seeding ? 'Seeding...' : 'Seed Defaults'}
+            </button>
+          )}
           <button className="btn btn-primary" onClick={openAdd} style={{ fontSize: 12, padding: '6px 14px' }}>
             <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span> Add Center
           </button>
