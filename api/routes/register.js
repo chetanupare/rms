@@ -150,6 +150,25 @@ router.post('/finalize', async (req, res) => {
   }
 });
 
+router.post('/reopen', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const entries = await req.db.collection('register_entries').find({ date: today }).toArray();
+    if (entries.length === 0) return res.status(400).json({ message: 'No entries found' });
+    if (!entries.some(e => e.finalized)) return res.status(400).json({ message: 'Day is not finalized' });
+
+    await req.db.collection('register_entries').updateMany(
+      { date: today },
+      { $set: { finalized: false } }
+    );
+
+    logger.info(`Register reopened for ${today} by ${req.user?.username || 'system'}`);
+    res.json({ message: 'Day reopened for editing' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/summary', adminOnly, async (req, res) => {
   try {
     const { from, to } = req.query;

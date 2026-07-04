@@ -67,6 +67,7 @@ export const endpoints = {
   updateRegisterEntry: (id, payload) => api.put(`/register/${id}`, payload),
   deleteRegisterEntry: (id) => api.delete(`/register/${id}`),
   finalizeRegister: () => api.post('/register/finalize'),
+  reopenRegister: () => api.post('/register/reopen'),
   registerSummary: (params) => api.get('/register/summary', { params }),
   tags: () => api.get('/tags'),
   createTag: (payload) => api.post('/tags', payload),

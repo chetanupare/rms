@@ -17,10 +17,10 @@ const NAV_ITEMS = [
   { label: 'Billing', icon: 'receipt_long', path: '/billing', roles: ['Admin'] },
   { label: 'Reports', icon: 'bar_chart', path: '/reports', roles: ['Admin'] },
   { label: 'Daily Registrar', icon: 'account_balance', path: '/register', roles: ['Admin'] },
-  { label: 'Settings', icon: 'settings', path: '/settings', roles: ['Admin'] },
-  { label: 'Data Warehouse', icon: 'database', path: '/data-warehouse', roles: ['Admin'] },
   { label: 'Inventory', icon: 'inventory_2', path: '/inventory', roles: ['Admin'] },
   { label: 'Warranty & RMA', icon: 'verified', path: '/warranty', roles: ['Admin'] },
+  { label: 'Service Centers', icon: 'support_agent', path: '/service-centers', roles: ['Admin'] },
+  { label: 'Settings', icon: 'settings', path: '/settings', roles: ['Admin'] },
 ];
 
 export default function AppShell() {
