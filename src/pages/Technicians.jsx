@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { endpoints } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Modal from '../components/Modal';
 
 const STATUS_COLORS = {
   on_duty: { bg: 'rgba(16,185,129,.12)', color: 'var(--c-green)', label: 'On Duty' },
@@ -14,6 +15,8 @@ export default function Technicians() {
   const { addToast } = useToast();
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [addModal, setAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ username: '', password: '', phone: '' });
 
   useEffect(() => {
     load();
@@ -29,6 +32,20 @@ export default function Technicians() {
     finally { setLoading(false); }
   }
 
+  async function handleAdd(e) {
+    e.preventDefault();
+    if (!addForm.username || !addForm.password) return;
+    try {
+      await endpoints.createUser({ ...addForm, role: 'Technician' });
+      addToast('Technician added', 'success');
+      setAddModal(false);
+      setAddForm({ username: '', password: '', phone: '' });
+      load();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to add technician', 'error');
+    }
+  }
+
   if (loading) return <LoadingSpinner text="Loading technicians..." />;
 
   const online = technicians.filter(t => t.status === 'on_duty');
@@ -42,6 +59,9 @@ export default function Technicians() {
           <div style={{ fontSize: 12, color: 'var(--c-text3)' }}>{online.length} online · {offline.length} offline · {technicians.length} total</div>
         </div>
         <div className="page-actions">
+          <button className="btn btn-primary" onClick={() => setAddModal(true)}>
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>add</span> Add Technician
+          </button>
           <button className="btn btn-ghost" onClick={load}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>refresh</span> Refresh</button>
         </div>
       </div>
@@ -133,6 +153,27 @@ export default function Technicians() {
           <div className="t-base dim">No technicians found</div>
         </div>
       )}
+
+      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Technician">
+        <form onSubmit={handleAdd}>
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input className="form-input" value={addForm.username} onChange={(e) => setAddForm({ ...addForm, username: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Phone</label>
+            <input className="form-input" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input type="password" className="form-input" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} required />
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setAddModal(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Add Technician</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

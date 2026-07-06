@@ -360,8 +360,8 @@ export default function JobDetail() {
           </div>
         </div>
         <div className="page-actions">
-          {job.status === 'Pending' && !job.technicianId && <button className="btn btn-primary" onClick={openTechModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>play_arrow</span> Start & Assign</button>}
-          {job.status === 'Pending' && job.technicianId && job.technician?.offerStatus === 'offered' && <span className="badge" style={{ background: 'rgba(245,158,11,.12)', color: 'var(--c-amber)', fontSize: 11 }}>Awaiting technician acceptance</span>}
+          {job.status === 'Pending' && job.technicianId && job.technician?.offerStatus === 'offered' && <span className="badge" style={{ background: 'rgba(245,158,11,.12)', color: 'var(--c-amber)', fontSize: 11, marginRight: 8 }}>Awaiting technician acceptance</span>}
+          {job.status === 'Pending' && (!job.technicianId || job.technician?.offerStatus === 'offered') && <button className="btn btn-primary" onClick={openTechModal}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>play_arrow</span> {job.technicianId ? 'Reassign' : 'Start & Assign'}</button>}
           {job.status === 'In Progress' && <button className="btn btn-ghost" style={{ color: 'var(--c-red)' }} onClick={() => setRejectModalOpen(true)}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>cancel</span> Reject Estimate</button>}
           {job.status === 'In Progress' && <button className="btn btn-primary" onClick={handleComplete}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>check</span> Complete</button>}
           {job.status === 'Billed' && <button className="btn btn-primary" onClick={handleDeliver}><span className="material-symbols-rounded" style={{ fontSize: 14 }}>handshake</span> Deliver</button>}

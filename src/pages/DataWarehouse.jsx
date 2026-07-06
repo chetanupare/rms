@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { endpoints } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -38,6 +38,20 @@ export default function DataWarehouse() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const dynamicCategories = useMemo(() => {
+    const customTypes = new Set();
+    brands.forEach(b => { if (b.deviceType) customTypes.add(b.deviceType); });
+    models.forEach(m => { if (m.deviceType) customTypes.add(m.deviceType); });
+    const defaults = DEVICE_CATEGORIES.map(c => c.key);
+    
+    return [
+      ...DEVICE_CATEGORIES,
+      ...Array.from(customTypes)
+        .filter(t => !defaults.includes(t))
+        .map(t => ({ key: t, icon: 'devices_other' }))
+    ];
+  }, [brands, models]);
 
   const filteredBrands = deviceFilter ? brands.filter((b) => b.deviceType === deviceFilter) : brands;
   const filteredModels = deviceFilter ? models.filter((m) => m.deviceType === deviceFilter) : models;
@@ -117,7 +131,7 @@ export default function DataWarehouse() {
 
       {tab === 'categories' && (
         <div className="grid-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-          {DEVICE_CATEGORIES.map((cat) => {
+          {dynamicCategories.map((cat) => {
             const brandCount = brands.filter((b) => b.deviceType === cat.key).length;
             const modelCount = models.filter((m) => m.deviceType === cat.key).length;
             return (
@@ -134,7 +148,7 @@ export default function DataWarehouse() {
       {(tab === 'brands' || tab === 'models') && (
         <div className="flex gap-2 mb-3" style={{ flexWrap: 'wrap' }}>
           <button className={`btn ${!deviceFilter ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setDeviceFilter('')}>All</button>
-          {DEVICE_CATEGORIES.map((cat) => (
+          {dynamicCategories.map((cat) => (
             <button key={cat.key} className={`btn ${deviceFilter === cat.key ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setDeviceFilter(cat.key)}>
               {cat.key}
             </button>
@@ -183,9 +197,10 @@ export default function DataWarehouse() {
           </div>
           <div className="form-group">
             <label className="form-label">Device Type</label>
-            <select className="form-input" value={brandForm.deviceType} onChange={(e) => setBrandForm({ ...brandForm, deviceType: e.target.value })}>
-              {DEVICE_CATEGORIES.map((d) => <option key={d.key}>{d.key}</option>)}
-            </select>
+            <input list="device-types-brand" className="form-input" value={brandForm.deviceType} onChange={(e) => setBrandForm({ ...brandForm, deviceType: e.target.value })} placeholder="Type or select device type" />
+            <datalist id="device-types-brand">
+              {dynamicCategories.map((d) => <option key={d.key} value={d.key} />)}
+            </datalist>
           </div>
           <div className="flex justify-end gap-2 mt-3">
             <button type="button" className="btn btn-ghost" onClick={() => setBrandModal(false)}>Cancel</button>
@@ -206,9 +221,10 @@ export default function DataWarehouse() {
             </div>
             <div className="form-group">
               <label className="form-label">Device Type</label>
-              <select className="form-input" value={modelForm.deviceType} onChange={(e) => setModelForm({ ...modelForm, deviceType: e.target.value })}>
-                {DEVICE_CATEGORIES.map((d) => <option key={d.key}>{d.key}</option>)}
-              </select>
+              <input list="device-types-model" className="form-input" value={modelForm.deviceType} onChange={(e) => setModelForm({ ...modelForm, deviceType: e.target.value })} placeholder="Type or select device type" />
+              <datalist id="device-types-model">
+                {dynamicCategories.map((d) => <option key={d.key} value={d.key} />)}
+              </datalist>
             </div>
           </div>
           <div className="form-group">

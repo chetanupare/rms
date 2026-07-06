@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { label: 'Inventory', icon: 'inventory_2', path: '/inventory', roles: ['Admin'] },
   { label: 'Warranty & RMA', icon: 'verified', path: '/warranty', roles: ['Admin'] },
   { label: 'Service Centers', icon: 'support_agent', path: '/service-centers', roles: ['Admin'] },
+  { label: 'Data Warehouse', icon: 'warehouse', path: '/data-warehouse', roles: ['Admin'] },
   { label: 'Settings', icon: 'settings', path: '/settings', roles: ['Admin'] },
 ];
 
