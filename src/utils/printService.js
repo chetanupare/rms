@@ -232,32 +232,32 @@ export async function printThermalLabel(job, customer, baseUrl, type = 'full') {
   w.document.write(`<!DOCTYPE html><html><head>
     <title>Label ${job.jobId}</title>
     <style>
-      @page{size:58mm 36mm;margin:0}
+      @page{size:38mm 25mm;margin:0}
       @media print{@page{margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
       *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:Arial,sans-serif;color:#000;width:57mm;height:35mm;overflow:hidden;padding:1mm 1.2mm;font-size:5.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .row{display:flex;gap:1mm;height:100%}
-      .left{flex-shrink:0;width:19mm;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5mm}
-      .left .qr img{width:19mm;height:19mm;display:block}
-      .left .ql{font-size:4px;color:#888;text-align:center;line-height:1}
-      .right{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-left:0.5mm;padding-top:2mm;padding-bottom:0.5mm}
-      .right .cname{font-size:7px;font-weight:700;color:#1a1a2e;line-height:1.2}
-      .right .cdate{font-size:5px;color:#666;line-height:1.2;margin-bottom:1mm}
-      .right .tc{font-size:5px;color:#888;text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
-      .right .tv{font-size:8px;font-weight:700;color:#cd0063;font-family:monospace;line-height:1.1;margin-bottom:1mm;letter-spacing:.3px}
-      .right .bc{text-align:center;margin:0.3mm 0}
-      .right .bc svg{display:block;width:100%;height:7mm}
-      .right .jid{font-size:5px;color:#666;line-height:1.1;font-family:monospace}
+      body{font-family:Arial,sans-serif;color:#000;width:38mm;height:25mm;overflow:hidden;padding:1mm 1.5mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .row{display:flex;gap:1.5mm;height:100%;align-items:center;justify-content:space-between}
+      .left{flex-shrink:0;width:14mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      .left .qr img{width:14mm;height:14mm;display:block;image-rendering:pixelated}
+      .left .ql{font-size:5pt;font-weight:bold;text-align:center;margin-top:0.5mm;line-height:1}
+      .right{flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+      .right .cname{font-size:7pt;font-weight:900;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.5mm}
+      .right .cdate{font-size:5pt;font-weight:bold;line-height:1.1;margin-bottom:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .right .tc{font-size:5pt;text-transform:uppercase;line-height:1;margin-bottom:0.2mm}
+      .right .tv{font-size:8pt;font-weight:900;font-family:monospace;line-height:1.1;margin-bottom:0.5mm}
+      .right .bc{text-align:center;margin:0.2mm 0}
+      .right .bc svg{display:block;width:100%;height:4.5mm}
+      .right .jid{font-size:5pt;font-weight:bold;line-height:1.1;font-family:monospace;text-align:right;margin-top:0.2mm}
     </style></head><body>
     <div class="row">
       ${showQr ? `<div class="left">
-        <div class="qr">${qrSrc ? `<img src="${qrSrc}" alt="QR"/>` : '<div style="width:19mm;height:19mm;display:flex;align-items:center;justify-content:center;font-size:5px;color:#999;background:#f5f5f5;border-radius:1mm">QR</div>'}</div>
-        <div class="ql">Scan to track</div>
+        <div class="qr">${qrSrc ? `<img src="${qrSrc}" alt="QR"/>` : '<div style="width:14mm;height:14mm;display:flex;align-items:center;justify-content:center;font-size:6pt;border:1px solid #000">QR</div>'}</div>
+        <div class="ql">TRACK</div>
       </div>` : ''}
-      <div class="right" style="${!showQr ? 'padding-left:2mm' : ''}">
+      <div class="right" style="${!showQr ? 'padding-left:1mm' : ''}">
         <div class="cname">${customer?.name || 'Customer'}</div>
-        <div class="cdate">Collected on ${collectedDate} ${collectedTime}</div>
-        <div class="tc">Tracking Code</div>
+        <div class="cdate">${collectedDate}</div>
+        <div class="tc">Track Code:</div>
         <div class="tv">${job.trackingCode || '—'}</div>
         ${showBarcode ? `<div class="bc"><svg id="bcode"></svg></div>` : ''}
         <div class="jid">${job.jobId}</div>
@@ -266,10 +266,10 @@ export async function printThermalLabel(job, customer, baseUrl, type = 'full') {
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js"><\/script>
     <script>
     try{
-      JsBarcode("#bcode","${job.jobId}",{format:"CODE128",width:0.6,height:7,displayValue:false,margin:0});
+      JsBarcode("#bcode","${job.jobId}",{format:"CODE128",width:1,height:8,displayValue:false,margin:0});
     }catch(e){
       var bcEl = document.querySelector('.right .bc');
-      if(bcEl) bcEl.innerHTML='<div style="font-size:6px;font-weight:700;font-family:monospace;word-break:break-all;line-height:1;color:#333">${job.jobId}</div>';
+      if(bcEl) bcEl.innerHTML='<div style="font-size:7pt;font-weight:900;font-family:monospace;word-break:break-all;line-height:1">${job.jobId}</div>';
     }
     setTimeout(function(){window.focus();window.print()},500);
     <\/script>

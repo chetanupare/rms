@@ -1,5 +1,5 @@
 # Step 1: Copy logo for splash screen
-Copy-Item "C:\Users\User\Projects\rms\public\logo.png" "C:\Users\User\Projects\rms\electron\logo.png" -Force
+Copy-Item ".\public\logo.png" ".\electron\logo.png" -Force
 
 # Step 2: Vite build
 npm run build
