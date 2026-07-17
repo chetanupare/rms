@@ -16,7 +16,9 @@ export default function Technicians() {
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ username: '', password: '', phone: '' });
+  const [addForm, setAddForm] = useState({ name: '', phone: '', password: '' });
+  const [editModal, setEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ id: '', name: '', phone: '', status: '' });
 
   useEffect(() => {
     load();
@@ -34,16 +36,34 @@ export default function Technicians() {
 
   async function handleAdd(e) {
     e.preventDefault();
-    if (!addForm.username || !addForm.password) return;
+    if (!addForm.name || !addForm.password) return;
     try {
       await endpoints.createUser({ ...addForm, role: 'Technician' });
       addToast('Technician added', 'success');
       setAddModal(false);
-      setAddForm({ username: '', password: '', phone: '' });
+      setAddForm({ name: '', phone: '', password: '' });
       load();
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to add technician', 'error');
     }
+  }
+
+  async function handleEdit(e) {
+    e.preventDefault();
+    if (!editForm.name) return;
+    try {
+      await endpoints.updateUser(editForm.id, { name: editForm.name, phone: editForm.phone, status: editForm.status });
+      addToast('Technician updated', 'success');
+      setEditModal(false);
+      load();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to update technician', 'error');
+    }
+  }
+
+  function openEdit(tech) {
+    setEditForm({ id: tech._id, name: tech.name || tech.username || '', phone: tech.phone || '', status: tech.status || 'off_duty' });
+    setEditModal(true);
   }
 
   if (loading) return <LoadingSpinner text="Loading technicians..." />;
@@ -100,9 +120,12 @@ export default function Technicians() {
                     <span className="material-symbols-rounded" style={{ fontSize: 20, color: '#fff' }}>person</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="t-sm fw-700">{tech.name}</div>
+                    <div className="t-sm fw-700">{tech.name || tech.username}</div>
                     <div className="t-xs dim">{tech.phone || 'No phone'}</div>
                   </div>
+                  <button className="btn btn-icon btn-ghost" onClick={() => openEdit(tech)}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 18 }}>edit</span>
+                  </button>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color: tech.activeJobs >= 5 ? 'var(--c-amber)' : 'var(--c-text)', lineHeight: 1 }}>{tech.activeJobs}</div>
                     <div className="t-xs dim">jobs</div>
@@ -133,9 +156,12 @@ export default function Technicians() {
                     <span className="material-symbols-rounded" style={{ fontSize: 20, color: 'var(--c-text3)' }}>person</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="t-sm fw-700">{tech.name}</div>
+                    <div className="t-sm fw-700">{tech.name || tech.username}</div>
                     <div className="t-xs dim">{tech.phone || 'No phone'}</div>
                   </div>
+                  <button className="btn btn-icon btn-ghost" onClick={() => openEdit(tech)}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 18 }}>edit</span>
+                  </button>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--c-text)', lineHeight: 1 }}>{tech.activeJobs}</div>
                     <div className="t-xs dim">jobs</div>
@@ -157,12 +183,12 @@ export default function Technicians() {
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Technician">
         <form onSubmit={handleAdd}>
           <div className="form-group">
-            <label className="form-label">Username</label>
-            <input className="form-input" value={addForm.username} onChange={(e) => setAddForm({ ...addForm, username: e.target.value })} required />
+            <label className="form-label">Name</label>
+            <input className="form-input" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
           </div>
           <div className="form-group">
             <label className="form-label">Phone</label>
-            <input className="form-input" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} />
+            <input className="form-input" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} required />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
@@ -171,6 +197,30 @@ export default function Technicians() {
           <div className="flex justify-end gap-2 mt-3">
             <button type="button" className="btn btn-ghost" onClick={() => setAddModal(false)}>Cancel</button>
             <button type="submit" className="btn btn-primary">Add Technician</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit Technician">
+        <form onSubmit={handleEdit}>
+          <div className="form-group">
+            <label className="form-label">Name</label>
+            <input className="form-input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Phone</label>
+            <input className="form-input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Status</label>
+            <select className="form-input" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+              <option value="on_duty">On Duty</option>
+              <option value="off_duty">Off Duty</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" className="btn btn-ghost" onClick={() => setEditModal(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
           </div>
         </form>
       </Modal>

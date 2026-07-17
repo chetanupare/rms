@@ -132,6 +132,7 @@ export const endpoints = {
   clearCustomers: () => api.post('/admin/clear-customers'),
   clearAll: () => api.post('/admin/clear-all'),
   createUser: (data) => api.post('/admin/create-user', data),
+  updateUser: (id, data) => api.put(`/admin/update-user/${id}`, data),
   saveDevice: (data) => api.post('/admin/save-device', data),
 
   // Service Centers
