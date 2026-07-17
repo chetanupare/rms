@@ -235,19 +235,19 @@ export async function printThermalLabel(job, customer, baseUrl, type = 'full') {
       @page{size:38mm 25mm;margin:0}
       @media print{@page{margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
       *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:Arial,sans-serif;color:#000;width:38mm;height:25mm;overflow:hidden;padding:1mm 1.5mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .row{display:flex;gap:1.5mm;height:100%;align-items:center;justify-content:space-between}
-      .left{flex-shrink:0;width:14mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
-      .left .qr img{width:14mm;height:14mm;display:block;image-rendering:pixelated}
-      .left .ql{font-size:5pt;font-weight:bold;text-align:center;margin-top:0.5mm;line-height:1}
-      .right{flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
-      .right .cname{font-size:7pt;font-weight:900;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.5mm}
-      .right .cdate{font-size:5pt;font-weight:bold;line-height:1.1;margin-bottom:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .right .tc{font-size:5pt;text-transform:uppercase;line-height:1;margin-bottom:0.2mm}
-      .right .tv{font-size:8pt;font-weight:900;font-family:monospace;line-height:1.1;margin-bottom:0.5mm}
+      body{font-family:Arial,sans-serif;color:#000;width:38mm;height:25mm;overflow:hidden;padding:0.5mm 1mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .row{display:flex;gap:1mm;height:100%;align-items:center;justify-content:flex-start}
+      .left{flex-shrink:0;width:12mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      .left .qr img{width:12mm;height:12mm;display:block;image-rendering:pixelated}
+      .left .ql{font-size:4.5pt;font-weight:bold;text-align:center;margin-top:0.5mm;line-height:1}
+      .right{flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding-left:1mm}
+      .right .cname{font-size:6.5pt;font-weight:900;line-height:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:0.5mm;word-break:break-word}
+      .right .cdate{font-size:5pt;font-weight:bold;line-height:1;margin-bottom:1mm;white-space:nowrap;overflow:hidden}
+      .right .tc{font-size:4.5pt;text-transform:uppercase;line-height:1;margin-bottom:0.2mm}
+      .right .tv{font-size:7pt;font-weight:900;font-family:monospace;line-height:1;margin-bottom:0.5mm}
       .right .bc{text-align:center;margin:0.2mm 0}
-      .right .bc svg{display:block;width:100%;height:4.5mm}
-      .right .jid{font-size:5pt;font-weight:bold;line-height:1.1;font-family:monospace;text-align:right;margin-top:0.2mm}
+      .right .bc svg{display:block;width:100%;height:4mm}
+      .right .jid{font-size:4.5pt;font-weight:bold;line-height:1;font-family:monospace;text-align:right;margin-top:0.2mm}
     </style></head><body>
     <div class="row">
       ${showQr ? `<div class="left">
