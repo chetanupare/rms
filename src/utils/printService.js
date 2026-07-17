@@ -2,7 +2,7 @@ import QRCode from 'qrcode';
 import { getTrackingUrl } from '../services/api';
 
 export async function generateQRDataUrl(text) {
-  return QRCode.toDataURL(text, { width: 200, margin: 2, color: { dark: '#1a1a2e', light: '#ffffff' } });
+  return QRCode.toDataURL(text, { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
 }
 
 export async function generateJobCardImage(job, customer, baseUrl) {
