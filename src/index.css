@@ -341,3 +341,25 @@ select.form-input{cursor:pointer}
 .login-footer{padding:10px 24px 16px;display:flex;justify-content:center}
 .login-footer a{font-size:11px;color:var(--c-text3)}
 .login-footer a span{color:var(--c-accent3)}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-root, #print-root * {
+    visibility: visible;
+  }
+  #print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  @page {
+    size: 38mm 25mm;
+    margin: 0;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   printHTML: (html) => ipcRenderer.invoke('print-html', html),
+  printNative: () => ipcRenderer.invoke('print-native'),
   isElectron: true,
 });
 

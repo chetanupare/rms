@@ -4,6 +4,7 @@ import { endpoints, api, assetUrl, getTrackingUrl } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatDateTime, formatCurrency, statusBadgeClass, openWhatsApp } from '../utils/helpers';
+import LabelPreview from '../components/LabelPreview';
 import { printA4Receipt, printThermalLabel } from '../utils/printService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
@@ -61,6 +62,7 @@ export default function JobDetail() {
   const [selectedCenter, setSelectedCenter] = useState(null);
 
   const [labelModalOpen, setLabelModalOpen] = useState(false);
+  const [labelType, setLabelType] = useState('full');
 
   useEffect(() => {
     setLoading(true);
@@ -776,23 +778,22 @@ export default function JobDetail() {
         </form>
       </Modal>
 
-      <Modal open={labelModalOpen} onClose={() => setLabelModalOpen(false)} title="Print Label">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <button className="btn btn-primary" onClick={() => { setLabelModalOpen(false); printThermalLabel(job, c, window.location.origin, 'qr'); }} style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="material-symbols-rounded" style={{ fontSize: 20 }}>qr_code_2</span>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontWeight: 600 }}>Tracking QR Code</div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Print label with QR code for tracking</div>
-            </div>
-          </button>
-          <button className="btn btn-primary" onClick={() => { setLabelModalOpen(false); printThermalLabel(job, c, window.location.origin, 'barcode'); }} style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="material-symbols-rounded" style={{ fontSize: 20 }}>barcode</span>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontWeight: 600 }}>Bar Code</div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Print label with CODE128 barcode</div>
-            </div>
-          </button>
+      <Modal open={labelModalOpen} onClose={() => setLabelModalOpen(false)} title="Label Preview & Print" width="700px">
+        <div style={{ marginBottom: 12, display: 'flex', gap: 8 }}>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="radio" name="labelType" checked={labelType === 'full'} onChange={() => setLabelType('full')} />
+            Both (Full)
+          </label>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="radio" name="labelType" checked={labelType === 'qr'} onChange={() => setLabelType('qr')} />
+            QR Code Only
+          </label>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="radio" name="labelType" checked={labelType === 'barcode'} onChange={() => setLabelType('barcode')} />
+            Barcode Only
+          </label>
         </div>
+        <LabelPreview job={job} customer={c} type={labelType} />
       </Modal>
 
     </div>

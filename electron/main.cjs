@@ -255,6 +255,18 @@ ipcMain.handle('print-html', async (event, htmlContent) => {
   return true;
 });
 
+ipcMain.handle('print-native', async (event) => {
+  if (mainWindow) {
+    mainWindow.webContents.print({
+      silent: false,
+      printBackground: true,
+      margins: { marginType: 'none' },
+      scaleFactor: 100
+    });
+  }
+  return true;
+});
+
 ipcMain.handle('get-autostart', () => app.getLoginItemSettings().openAtLogin);
 ipcMain.handle('set-autostart', (event, enabled) => { app.setLoginItemSettings({ openAtLogin: enabled }); });
 ipcMain.handle('get-health', () => ({ server: serverStatus, db: dbStatus }));
