@@ -48,7 +48,7 @@ export const endpoints = {
   search: (q) => api.get('/search', { params: withBranch({ q }) }),
   searchProblems: (q) => api.get('/search/problems', { params: { q } }),
 
-  customers: () => api.get('/customers', { params: withBranch() }),
+  customers: (params = {}) => api.get('/customers', { params: withBranch(params) }).then(res => ({ ...res, data: res.data.data || res.data, pagination: res.data.totalPages ? res.data : null })),
   searchCustomers: (q) => api.get('/customers/search', { params: { q } }),
   customerByMobile: (mobile) => api.get(`/customers/by-mobile/${mobile}`),
   customerHistory: (id) => api.get(`/customers/${id}/history`),
@@ -57,7 +57,7 @@ export const endpoints = {
   updateCustomer: (id, payload) => api.put(`/customers/${id}`, payload),
   deleteCustomer: (id) => api.delete(`/customers/${id}`),
 
-  jobCards: (params = {}) => api.get('/job-cards', { params: withBranch(params) }),
+  jobCards: (params = {}) => api.get('/job-cards', { params: withBranch(params) }).then(res => ({ ...res, data: res.data.data || res.data, pagination: res.data.totalPages ? res.data : null })),
   jobCardById: (id) => api.get(`/job-cards/${id}`),
   createJobCard: (payload) => api.post('/job-cards', payload),
   updateJobCard: (id, payload) => api.put(`/job-cards/${id}`, payload),

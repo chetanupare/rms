@@ -36,10 +36,39 @@ export default function Customers() {
   const [mergeTargetId, setMergeTargetId] = useState(null);
   const isTechnician = user?.role === 'Technician';
 
-  const load = useCallback(() => {
-    setLoading(true);
-    endpoints.customers().then(({ data }) => { setCustomers(data); setFiltered(data); }).catch(() => addToast('Failed to load customers', 'error')).finally(() => setLoading(false));
-  }, [branch]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const load = useCallback((isLoadMore = false) => {
+    if (!isLoadMore) setLoading(true);
+    else setLoadingMore(true);
+
+    const currentPage = isLoadMore ? page + 1 : 1;
+    endpoints.customers({ page: currentPage, limit: 50 }).then((res) => {
+      const data = res.data || [];
+      if (isLoadMore) {
+        setCustomers(prev => {
+          const existingIds = new Set(prev.map(p => p._id));
+          const newCustomers = data.filter(c => !existingIds.has(c._id));
+          return [...prev, ...newCustomers];
+        });
+        setFiltered(prev => {
+          const existingIds = new Set(prev.map(p => p._id));
+          const newCustomers = data.filter(c => !existingIds.has(c._id));
+          return [...prev, ...newCustomers];
+        });
+      } else {
+        setCustomers(data);
+        setFiltered(data);
+      }
+      setHasMore(res.pagination ? res.pagination.page < res.pagination.totalPages : false);
+      setPage(currentPage);
+    }).catch(() => addToast('Failed to load customers', 'error')).finally(() => {
+      setLoading(false);
+      setLoadingMore(false);
+    });
+  }, [branch, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -171,6 +200,13 @@ export default function Customers() {
               ))}
             </tbody>
           </table>
+          {hasMore && (
+            <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => load(true)} disabled={loadingMore}>
+                {loadingMore ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

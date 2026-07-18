@@ -93,15 +93,40 @@ export default function Repairs() {
   const [transferTo, setTransferTo] = useState('');
   const [transferNotes, setTransferNotes] = useState('');
 
-  const load = useCallback(() => {
-    setLoading(true);
-    Promise.all([endpoints.jobCards(), endpoints.repairs()]).then(([jobsRes, repairsRes]) => {
-      const j = jobsRes.data;
-      setJobs(j);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const load = useCallback((isLoadMore = false) => {
+    if (!isLoadMore) setLoading(true);
+    else setLoadingMore(true);
+
+    const currentPage = isLoadMore ? page + 1 : 1;
+    
+    const params = { page: currentPage, limit: 50 };
+    if (statusFilter) params.status = statusFilter;
+    if (techFilter) params.technician = techFilter;
+
+    Promise.all([endpoints.jobCards(params), endpoints.repairs()]).then(([jobsRes, repairsRes]) => {
+      const j = jobsRes.data || [];
+      if (isLoadMore) {
+        setJobs(prev => {
+          const existingIds = new Set(prev.map(p => p._id));
+          return [...prev, ...j.filter(newJ => !existingIds.has(newJ._id))];
+        });
+      } else {
+        setJobs(j);
+      }
+      setHasMore(jobsRes.pagination ? jobsRes.pagination.page < jobsRes.pagination.totalPages : false);
+      setPage(currentPage);
+      
       const techs = [...new Set(repairsRes.data.map((r) => r.technician).filter(Boolean))];
       setAllTechs(techs);
-    }).catch(() => addToast('Failed to load repairs', 'error')).finally(() => setLoading(false));
-  }, [branch]);
+    }).catch(() => addToast('Failed to load repairs', 'error')).finally(() => {
+      setLoading(false);
+      setLoadingMore(false);
+    });
+  }, [branch, page, statusFilter, techFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -293,6 +318,13 @@ export default function Repairs() {
               })}
             </tbody>
           </table>
+          {view === 'list' && hasMore && (
+            <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => load(true)} disabled={loadingMore}>
+                {loadingMore ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
