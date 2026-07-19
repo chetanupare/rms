@@ -103,7 +103,7 @@ export default function NewService() {
   useEffect(() => {
     setLoading(true);
     Promise.all([endpoints.brands(), endpoints.deviceModels(), endpoints.tags()])
-      .then(([bRes, mRes, tRes]) => { setBrands(bRes.data); setModels(mRes.data); setJobTags(tRes.data || []); })
+      .then(([bRes, mRes, tRes]) => { setBrands(Array.isArray(bRes.data) ? bRes.data : []); setModels(Array.isArray(mRes.data) ? mRes.data : []); setJobTags(Array.isArray(tRes.data) ? tRes.data : []); })
       .catch(() => addToast('Failed to load device data', 'error'))
       .finally(() => setLoading(false));
   }, []);

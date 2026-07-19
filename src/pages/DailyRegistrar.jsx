@@ -61,18 +61,18 @@ export default function DailyRegistrar() {
   const load = useCallback(() => {
     if (tab === 'history') return;
     setLoading(true);
-    endpoints.register(targetDate).then(({ data }) => { setData(data); setEntries(data.entries || []); }).catch(() => addToast('Failed to load', 'error')).finally(() => setLoading(false));
+    endpoints.register(targetDate).then(({ data }) => { setData(data); setEntries(Array.isArray(data?.entries) ? data.entries : []); }).catch(() => addToast('Failed to load', 'error')).finally(() => setLoading(false));
   }, [targetDate, tab]);
   useEffect(() => { load(); }, [load]);
 
   const loadSummary = useCallback(() => {
     setLoading(true);
-    endpoints.registerSummary({}).then(({ data }) => setSummary(data || [])).catch(() => addToast('Failed to load history', 'error')).finally(() => setLoading(false));
+    endpoints.registerSummary({}).then(({ data }) => setSummary(Array.isArray(data) ? data : [])).catch(() => addToast('Failed to load history', 'error')).finally(() => setLoading(false));
   }, []);
   useEffect(() => { if (tab === 'history') loadSummary(); }, [tab]);
 
   async function viewDayDetails(date) {
-    try { const { data } = await endpoints.register(date); setViewDay(date); setViewEntries(data.entries || []); }
+    try { const { data } = await endpoints.register(date); setViewDay(date); setViewEntries(Array.isArray(data?.entries) ? data.entries : []); }
     catch { addToast('Failed to load', 'error'); }
   }
 

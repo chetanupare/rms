@@ -166,7 +166,7 @@ export default function JobDetail() {
     setLoadingTechs(true);
     try {
       const { data: techs } = await endpoints.receptionTechnicians();
-      setTechnicians(techs);
+      setTechnicians(Array.isArray(techs) ? techs : []);
     } catch { addToast('Failed to load technicians', 'error'); }
     finally { setLoadingTechs(false); }
   }
@@ -198,7 +198,7 @@ export default function JobDetail() {
     setLoadingCenters(true);
     endpoints.serviceCenters({ brand: data.brand })
       .then(({ data: centers }) => {
-        const allCenters = centers || [];
+        const allCenters = Array.isArray(centers) ? centers : [];
         const filtered = allCenters.filter(c => 
           c.deviceType.toLowerCase().includes(data.device?.toLowerCase() || '') ||
           (data.device || '').toLowerCase().includes(c.deviceType.toLowerCase()) ||

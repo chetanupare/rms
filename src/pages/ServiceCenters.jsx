@@ -34,10 +34,10 @@ export default function ServiceCenters() {
   async function loadBrands() {
     try {
       const { data: brandData } = await endpoints.brands();
-      const uniqueBrands = [...new Set((brandData || []).map(b => b.name))].sort();
+      const uniqueBrands = [...new Set((Array.isArray(brandData) ? brandData : []).map(b => b.name))].sort();
       setBrands(uniqueBrands);
       
-      const uniqueTypes = [...new Set((brandData || []).map(b => b.deviceType))].sort();
+      const uniqueTypes = [...new Set((Array.isArray(brandData) ? brandData : []).map(b => b.deviceType))].sort();
       setDeviceTypes(uniqueTypes);
     } catch { }
   }

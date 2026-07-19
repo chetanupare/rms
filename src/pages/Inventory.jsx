@@ -28,7 +28,7 @@ export default function Inventory() {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([endpoints.inventoryParts({ search: searchTerm || undefined }), endpoints.suppliers(), endpoints.purchaseOrders({})])
-      .then(([pRes, sRes, poRes]) => { setParts(pRes.data); setSuppliers(sRes.data); setPos(poRes.data); })
+      .then(([pRes, sRes, poRes]) => { setParts(Array.isArray(pRes.data) ? pRes.data : []); setSuppliers(Array.isArray(sRes.data) ? sRes.data : []); setPos(Array.isArray(poRes.data) ? poRes.data : []); })
       .catch(() => addToast('Failed to load inventory', 'error')).finally(() => setLoading(false));
   }, [searchTerm]);
 

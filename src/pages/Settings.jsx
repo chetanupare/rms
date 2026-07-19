@@ -72,7 +72,7 @@ export default function Settings() {
     setLoadingCenters(true);
     try {
       const { data } = await endpoints.serviceCenters();
-      setServiceCenters(data || []);
+      setServiceCenters(Array.isArray(data) ? data : []);
     } catch { } finally { setLoadingCenters(false); }
   }
 

@@ -37,7 +37,7 @@ export default function WarrantyPage() {
       endpoints.warrantyExpiring({ days: 7 }),
       endpoints.supplierReturnable(),
     ]).then(([rRes, eRes, sRes]) => {
-      setRmaList(rRes.data); setExpiring(eRes.data); setReturnable(sRes.data);
+      setRmaList(Array.isArray(rRes.data) ? rRes.data : []); setExpiring(Array.isArray(eRes.data) ? eRes.data : []); setReturnable(Array.isArray(sRes.data) ? sRes.data : []);
     }).catch(() => addToast('Failed to load', 'error')).finally(() => setLoading(false));
   }, []);
 
@@ -46,9 +46,9 @@ export default function WarrantyPage() {
   async function loadBrands() {
     try {
       const { data: brandData } = await endpoints.brands();
-      const uniqueBrands = [...new Set((brandData || []).map(b => b.name))].sort();
+      const uniqueBrands = [...new Set((Array.isArray(brandData) ? brandData : []).map(b => b.name))].sort();
       setBrands(uniqueBrands);
-      const uniqueTypes = [...new Set((brandData || []).map(b => b.deviceType))].sort();
+      const uniqueTypes = [...new Set((Array.isArray(brandData) ? brandData : []).map(b => b.deviceType))].sort();
       setDeviceTypes(uniqueTypes);
     } catch { }
   }
@@ -56,7 +56,7 @@ export default function WarrantyPage() {
   async function loadModels(brandName) {
     try {
       const { data: modelData } = await endpoints.deviceModels();
-      const filtered = (modelData || []).filter(m => m.brand === brandName);
+      const filtered = (Array.isArray(modelData) ? modelData : []).filter(m => m.brand === brandName);
       setModels(filtered.map(m => m.modelName).sort());
     } catch { }
   }

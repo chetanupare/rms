@@ -27,8 +27,8 @@ export default function Billing() {
     setLoading(true);
     Promise.all([endpoints.jobCards(), endpoints.billing()])
       .then(([jobsRes, billsRes]) => {
-        const allJobs = jobsRes.data;
-        const allBills = billsRes.data;
+        const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : [];
+        const allBills = Array.isArray(billsRes.data) ? billsRes.data : [];
         setCompletedJobs(allJobs.filter((j) => j.status === 'Completed' || j.status === 'Billed'));
         setBills(allBills);
       }).catch(() => addToast('Failed to load data', 'error')).finally(() => setLoading(false));

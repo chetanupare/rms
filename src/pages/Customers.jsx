@@ -263,14 +263,14 @@ export default function Customers() {
         {historyData && (
           <div>
             <div className="t-sm muted mb-2">{historyData.customer.mobile} — {historyData.customer.address}</div>
-            {historyData.jobCards.length === 0 ? (
+            {(!historyData.jobCards || historyData.jobCards.length === 0) ? (
               <div className="t-xs muted">No service jobs</div>
             ) : (
               <>
                 <div className="sec-head mt-3"><span className="t-sm">Job Cards</span></div>
                 <table className="tbl">
                   <thead><tr><th>Job ID</th><th>Device</th><th>Model</th><th>Problem</th><th>Status</th><th>Branch</th><th>Date</th></tr></thead>
-                  <tbody>{historyData.jobCards.map((j) => (
+                  <tbody>{(historyData.jobCards || []).map((j) => (
                     <tr key={j._id}>
                       <td className="mono t-xs">{j.jobId}</td>
                       <td>{j.device || '—'}</td>
@@ -284,11 +284,11 @@ export default function Customers() {
                 </table>
               </>
             )}
-            {historyData.repairs.length > 0 && (
+            {(historyData.repairs || []).length > 0 && (
               <><div className="sec-head mt-3"><span className="t-sm">Repairs</span></div>
               <table className="tbl">
                 <thead><tr><th>Job ID</th><th>Technician</th><th>Diagnosis</th><th>Estimate</th><th>Status</th></tr></thead>
-                <tbody>{historyData.repairs.map((r) => (
+                <tbody>{(historyData.repairs || []).map((r) => (
                   <tr key={r._id}>
                     <td className="mono t-xs">{r.jobId}</td><td>{r.technician}</td>
                     <td className="muted truncate t-xs" style={{ maxWidth: 180 }}>{r.diagnosis}</td>
@@ -298,11 +298,11 @@ export default function Customers() {
                 ))}</tbody>
               </table></>
             )}
-            {historyData.billing.length > 0 && (
+            {(historyData.billing || []).length > 0 && (
               <><div className="sec-head mt-3"><span className="t-sm">Billing</span></div>
               <table className="tbl">
                 <thead><tr><th>Invoice</th><th>Job ID</th><th>Type</th><th>Amount</th><th>Payment</th><th>Date</th></tr></thead>
-                <tbody>{historyData.billing.map((b) => (
+                <tbody>{(historyData.billing || []).map((b) => (
                   <tr key={b._id}>
                     <td className="mono fw-600">{b.invoiceNo}</td>
                     <td className="mono dim t-xs">{b.jobId}</td>
@@ -327,7 +327,7 @@ export default function Customers() {
               <input className="form-input" value={mergeSource} onChange={async (e) => {
                 setMergeSource(e.target.value);
                 if (e.target.value.length >= 2) {
-                  try { const { data } = await endpoints.searchCustomers(e.target.value); setMergeSearchSource(data); }
+                  try { const { data } = await endpoints.searchCustomers(e.target.value); setMergeSearchSource(Array.isArray(data) ? data : []); }
                   catch { setMergeSearchSource([]); }
                 }
               }} placeholder="Search by name/mobile..." />
@@ -342,7 +342,7 @@ export default function Customers() {
               <input className="form-input" value={mergeTarget} onChange={async (e) => {
                 setMergeTarget(e.target.value);
                 if (e.target.value.length >= 2) {
-                  try { const { data } = await endpoints.searchCustomers(e.target.value); setMergeSearchTarget(data); }
+                  try { const { data } = await endpoints.searchCustomers(e.target.value); setMergeSearchTarget(Array.isArray(data) ? data : []); }
                   catch { setMergeSearchTarget([]); }
                 }
               }} placeholder="Search by name/mobile..." />

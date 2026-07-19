@@ -14,7 +14,7 @@ export default function Reports() {
 
   const load = useCallback(() => {
     setLoading(true);
-    endpoints.reports({ type: reportType }).then(({ data }) => setData(data)).catch(() => addToast('Failed to load reports', 'error')).finally(() => setLoading(false));
+    endpoints.reports({ type: reportType }).then(({ data }) => setData(data && typeof data === 'object' ? data : null)).catch(() => addToast('Failed to load reports', 'error')).finally(() => setLoading(false));
   }, [reportType, branch]);
 
   useEffect(() => { load(); }, [load]);

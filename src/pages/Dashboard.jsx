@@ -54,7 +54,7 @@ export default function Dashboard() {
 
   const load = useCallback(() => {
     setLoading(true);
-    endpoints.dashboard().then(({ data }) => setData(data)).catch(() => addToast('Failed to load dashboard', 'error')).finally(() => setLoading(false));
+    endpoints.dashboard().then(({ data }) => setData(data && typeof data === 'object' ? data : null)).catch(() => addToast('Failed to load dashboard', 'error')).finally(() => setLoading(false));
   }, [branch]);
 
   useEffect(() => { load(); }, [load]);

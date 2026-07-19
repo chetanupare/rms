@@ -29,7 +29,7 @@ export default function Technicians() {
   async function load() {
     try {
       const { data } = await endpoints.receptionTechnicians();
-      setTechnicians(data);
+      setTechnicians(Array.isArray(data) ? data : []);
     } catch { addToast('Failed to load technicians', 'error'); }
     finally { setLoading(false); }
   }

@@ -32,7 +32,7 @@ export default function DataWarehouse() {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([endpoints.brands(), endpoints.deviceModels()])
-      .then(([bRes, mRes]) => { setBrands(bRes.data); setModels(mRes.data); })
+      .then(([bRes, mRes]) => { setBrands(Array.isArray(bRes.data) ? bRes.data : []); setModels(Array.isArray(mRes.data) ? mRes.data : []); })
       .catch(() => addToast('Failed to load data', 'error'))
       .finally(() => setLoading(false));
   }, []);

@@ -108,7 +108,7 @@ export default function Repairs() {
     if (techFilter) params.technician = techFilter;
 
     Promise.all([endpoints.jobCards(params), endpoints.repairs()]).then(([jobsRes, repairsRes]) => {
-      const j = jobsRes.data || [];
+      const j = Array.isArray(jobsRes.data) ? jobsRes.data : [];
       if (isLoadMore) {
         setJobs(prev => {
           const existingIds = new Set(prev.map(p => p._id));
@@ -120,7 +120,8 @@ export default function Repairs() {
       setHasMore(jobsRes.pagination ? jobsRes.pagination.page < jobsRes.pagination.totalPages : false);
       setPage(currentPage);
       
-      const techs = [...new Set(repairsRes.data.map((r) => r.technician).filter(Boolean))];
+      const repairsArr = Array.isArray(repairsRes.data) ? repairsRes.data : [];
+      const techs = [...new Set(repairsArr.map((r) => r.technician).filter(Boolean))];
       setAllTechs(techs);
     }).catch(() => addToast('Failed to load repairs', 'error')).finally(() => {
       setLoading(false);
