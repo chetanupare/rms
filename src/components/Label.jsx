@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, forwardRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
+import { getTrackingUrl } from '../services/api';
 
 export const Label = forwardRef(({ job, customer, type = 'full' }, ref) => {
   const barcodeRef = useRef(null);
@@ -24,8 +25,7 @@ export const Label = forwardRef(({ job, customer, type = 'full' }, ref) => {
   useEffect(() => {
     if (showQr && job?.jobId) {
       const trackingCode = job.trackingCode || job.jobId;
-      const baseUrl = window.location.origin;
-      const trackingUrl = `${baseUrl}/track/${trackingCode}`;
+      const trackingUrl = getTrackingUrl(trackingCode);
       
       QRCode.toDataURL(trackingUrl, { margin: 0, scale: 4, width: 400 })
         .then(url => setQrUrl(url))
